@@ -35,6 +35,8 @@ class TokenList : public std::vector<Token> {
     TokenList();
     ~TokenList();
 
+    using vector::at;
+
     void add(Token tok);
     void add_reserved(Token tok);
 };
@@ -46,7 +48,21 @@ class Tokenizer {
   public:
     TokenList *tokenize(std::basic_istream<char> &lines);
     static bool isReserved(Token tok);
+    static bool isOperator(char c);
+    static bool isAlphaNumeric(char c);
 
   private:
     static const std::array<Token, 2> reserved;
+    static const std::array<char, 4> operators;
+    void logError(std::ostream &out, const std::string &msg,
+                  const std::string &line, int lineno, int col);
+
+    enum class State {
+      START_LINE,
+      START_TOKEN,
+      STRING_TOKEN,
+      TOKEN,
+      END_TOKEN,
+      END_LINE,
+    };
 };
