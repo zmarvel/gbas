@@ -1,0 +1,4 @@
+.ifdef
+undefined_symbol
+EOL
+EOF

@@ -1,0 +1,7 @@
+EOL
+.incbin
+"file.bin"
+,
+4
+EOL
+EOF

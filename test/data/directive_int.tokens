@@ -1,0 +1,15 @@
+.int
+EOL
+.int
+1
+EOL
+.int
+1
+,
+2
+,
+3
+,
+4
+EOL
+EOF

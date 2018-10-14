@@ -1,0 +1,4 @@
+.global
+mysym
+EOL
+EOF

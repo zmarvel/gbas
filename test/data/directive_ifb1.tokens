@@ -1,0 +1,6 @@
+.ifb
+"text"
+EOL
+.endif
+EOL
+EOF

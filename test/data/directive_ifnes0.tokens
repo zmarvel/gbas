@@ -1,0 +1,8 @@
+.ifnes
+"12"
+,
+"12"
+EOL
+.endif
+EOL
+EOF

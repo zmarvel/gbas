@@ -1,0 +1,12 @@
+EOL
+.hword
+42
+EOL
+.hword
+41
++
+1
+,
+0xffff
+EOL
+EOF

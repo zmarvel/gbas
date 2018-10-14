@@ -1,0 +1,6 @@
+.ifc
+"ab"
+,
+"cd"
+EOL
+EOF

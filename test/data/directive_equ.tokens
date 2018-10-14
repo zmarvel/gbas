@@ -1,0 +1,7 @@
+EOL
+.equ
+testsym
+,
+0xbeef
+EOL
+EOF

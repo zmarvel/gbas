@@ -1,0 +1,11 @@
+.equ
+defined_sym
+,
+44
+EOL
+.ifndef
+defined_sym
+EOL
+.endif
+EOL
+EOF

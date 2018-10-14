@@ -1,0 +1,9 @@
+.equ
+mysym
+,
+0x35
+EOL
+.ifdef
+symbol
+EOL
+EOF

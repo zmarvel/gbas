@@ -1,0 +1,6 @@
+.ifndef
+undef_sym
+EOL
+.endif
+EOL
+EOF

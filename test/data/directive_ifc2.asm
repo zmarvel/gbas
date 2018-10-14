@@ -1,0 +1,2 @@
+.ifc "ab", "ab"
+.endif

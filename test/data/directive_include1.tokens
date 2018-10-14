@@ -1,0 +1,10 @@
+EOL
+.include
+"incfile.asm"
+EOL
+add
+a
+,
+15
+EOL
+EOF

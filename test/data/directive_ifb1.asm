@@ -1,0 +1,2 @@
+.ifb "text"
+.endif

@@ -1,0 +1,8 @@
+.ifeqs
+"12"
+,
+"23"
+EOL
+.endif
+EOL
+EOF

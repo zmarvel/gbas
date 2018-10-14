@@ -1,0 +1,6 @@
+.ifne
+0
+EOL
+.endif
+EOL
+EOF

@@ -1,0 +1,4 @@
+.ifgt
+0
+EOL
+EOF

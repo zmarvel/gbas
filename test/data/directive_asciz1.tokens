@@ -1,0 +1,6 @@
+.asciz
+"a string"
+,
+"another string"
+EOL
+EOF

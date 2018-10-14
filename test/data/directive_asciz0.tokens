@@ -1,0 +1,4 @@
+.asciz
+"a string"
+EOL
+EOF

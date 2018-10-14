@@ -1,0 +1,8 @@
+.ifnc
+"12"
+,
+"34"
+EOL
+.endif
+EOL
+EOF

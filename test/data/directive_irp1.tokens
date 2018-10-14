@@ -1,0 +1,16 @@
+EOL
+.irp
+name
+,
+1
+,
+2
+EOL
+add
+a
+,
+\name
+EOL
+.endr
+EOL
+EOF

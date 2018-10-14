@@ -1,0 +1,8 @@
+.ifc
+"ab"
+,
+"ab"
+EOL
+.endif
+EOL
+EOF

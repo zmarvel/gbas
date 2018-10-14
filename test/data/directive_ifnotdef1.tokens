@@ -1,0 +1,6 @@
+.ifnotdef
+undefined_sym
+EOL
+.endif
+EOL
+EOF

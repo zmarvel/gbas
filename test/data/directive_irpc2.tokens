@@ -1,0 +1,15 @@
+EOL
+EOL
+.irpc
+name
+,
+012
+EOL
+add
+a
+,
+1\name
+EOL
+.endr
+EOL
+EOF
