@@ -1,5 +1,6 @@
 
 #include <fstream>
+#include <string>
 #define BOOST_TEST_MAIN
 #define BOOST_TEST_DYN_LINK
 #include <boost/test/unit_test.hpp>
@@ -19,12 +20,13 @@ BOOST_AUTO_TEST_CASE(test_Tokenizer_tokenize0) {
   std::stringstream stream;
   stream << input;
   auto tokens = tokenizer.tokenize(stream);
-  BOOST_REQUIRE_EQUAL(tokens->size(), 5);
+  BOOST_REQUIRE_EQUAL(tokens->size(), 6);
   BOOST_REQUIRE_EQUAL(tokens->at(0), Token("add"));
   BOOST_REQUIRE_EQUAL(tokens->at(1), Token("a"));
-  BOOST_REQUIRE_EQUAL(tokens->at(2), Token("32"));
-  BOOST_REQUIRE_EQUAL(tokens->at(3), Token("EOL"));
-  BOOST_REQUIRE_EQUAL(tokens->at(4), Token("EOF"));
+  BOOST_REQUIRE_EQUAL(tokens->at(2), Token(","));
+  BOOST_REQUIRE_EQUAL(tokens->at(3), Token("32"));
+  BOOST_REQUIRE_EQUAL(tokens->at(4), Token("EOL"));
+  BOOST_REQUIRE_EQUAL(tokens->at(5), Token("EOF"));
 }
 
 class TokenizerTestFile {
@@ -41,14 +43,18 @@ class TokenizerTestFile {
     }
 
     void doTest() {
-      std::array<char, MAX_LINELEN> line;
+      if (!stream.is_open()) {
+        BOOST_FAIL("Input file does not exist");
+      } else if (!expectedStream.is_open()) {
+        BOOST_FAIL("Expected output file does not exist");
+      }
       auto tokenizer = Tokenizer{};
       auto tokens = tokenizer.tokenize(stream);
-      expectedStream.getline(line.data(), MAX_LINELEN);
       auto token = tokens->begin();
-      while ((!expectedStream.eof()) && (token != tokens->end())) {
-        BOOST_REQUIRE_EQUAL(std::string{line.data()}, *token);
-        expectedStream.getline(line.data(), MAX_LINELEN);
+      for (std::string line;
+           std::getline(expectedStream, line) && (token != tokens->end());
+           line.clear()) {
+        BOOST_REQUIRE_EQUAL(line, *token);
         token++;
       }
       BOOST_TEST(expectedStream.eof());
@@ -90,3 +96,490 @@ BOOST_AUTO_TEST_CASE(test_Tokenizer_comment2) {
   TokenizerTestFile testFile{"comment2.asm", "comment2.tokens"};
   testFile.doTest();
 }
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_align0) {
+  TokenizerTestFile testFile{"directive_align0.asm", "directive_align0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_align1) {
+  TokenizerTestFile testFile{"directive_align1.asm", "directive_align1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ascii0) {
+  TokenizerTestFile testFile{"directive_ascii0.asm", "directive_ascii0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ascii1) {
+  TokenizerTestFile testFile{"directive_ascii1.asm", "directive_ascii1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ascii2) {
+  TokenizerTestFile testFile{"directive_ascii2.asm", "directive_ascii2.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ascii3) {
+  TokenizerTestFile testFile{"directive_ascii3.asm", "directive_ascii3.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_asciz0) {
+  TokenizerTestFile testFile{"directive_asciz0.asm", "directive_asciz0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_asciz1) {
+  TokenizerTestFile testFile{"directive_asciz1.asm", "directive_asciz1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_balign0) {
+  TokenizerTestFile testFile{"directive_balign0.asm", "directive_balign0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_balign1) {
+  TokenizerTestFile testFile{"directive_balign1.asm", "directive_balign1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_balign2) {
+  TokenizerTestFile testFile{"directive_balign2.asm", "directive_balign2.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_balign3) {
+  TokenizerTestFile testFile{"directive_balign3.asm", "directive_balign3.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_data0) {
+  TokenizerTestFile testFile{"directive_data0.asm", "directive_data0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_data1) {
+  TokenizerTestFile testFile{"directive_data1.asm", "directive_data1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_dc0) {
+  TokenizerTestFile testFile{"directive_dc0.asm", "directive_dc0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_dc1) {
+  TokenizerTestFile testFile{"directive_dc1.asm", "directive_dc1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_dc2) {
+  TokenizerTestFile testFile{"directive_dc2.asm", "directive_dc2.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_dc3) {
+  TokenizerTestFile testFile{"directive_dc3.asm", "directive_dc3.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_dc4) {
+  TokenizerTestFile testFile{"directive_dc4.asm", "directive_dc4.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_dc5) {
+  TokenizerTestFile testFile{"directive_dc5.asm", "directive_dc5.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_dcb0) {
+  TokenizerTestFile testFile{"directive_dcb0.asm", "directive_dcb0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_dcb1) {
+  TokenizerTestFile testFile{"directive_dcb1.asm", "directive_dcb1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_dcb2) {
+  TokenizerTestFile testFile{"directive_dcb2.asm", "directive_dcb2.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_dcb3) {
+  TokenizerTestFile testFile{"directive_dcb3.asm", "directive_dcb3.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_double0) {
+  TokenizerTestFile testFile{"directive_double0.asm", "directive_double0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_double1) {
+  TokenizerTestFile testFile{"directive_double1.asm", "directive_double1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_double2) {
+  TokenizerTestFile testFile{"directive_double2.asm", "directive_double2.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ds0) {
+  TokenizerTestFile testFile{"directive_ds0.asm", "directive_ds0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ds1) {
+  TokenizerTestFile testFile{"directive_ds1.asm", "directive_ds1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ds2) {
+  TokenizerTestFile testFile{"directive_ds2.asm", "directive_ds2.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ds3) {
+  TokenizerTestFile testFile{"directive_ds3.asm", "directive_ds3.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_equ) {
+  TokenizerTestFile testFile{"directive_equ.asm", "directive_equ.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_equiv) {
+  TokenizerTestFile testFile{"directive_equiv.asm", "directive_equiv.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_eqv) {
+  TokenizerTestFile testFile{"directive_eqv.asm", "directive_eqv.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_err) {
+  TokenizerTestFile testFile{"directive_err.asm", "directive_err.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_error0) {
+  TokenizerTestFile testFile{"directive_error0.asm", "directive_error0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_error1) {
+  TokenizerTestFile testFile{"directive_error1.asm", "directive_error1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_fail0) {
+  TokenizerTestFile testFile{"directive_fail0.asm", "directive_fail0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_fail1) {
+  TokenizerTestFile testFile{"directive_fail1.asm", "directive_fail1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_fill0) {
+  TokenizerTestFile testFile{"directive_fill0.asm", "directive_fill0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_fill1) {
+  TokenizerTestFile testFile{"directive_fill1.asm", "directive_fill1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_fill2) {
+  TokenizerTestFile testFile{"directive_fill2.asm", "directive_fill2.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_func0) {
+  TokenizerTestFile testFile{"directive_func0.asm", "directive_func0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_func1) {
+  TokenizerTestFile testFile{"directive_func1.asm", "directive_func1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_global) {
+  TokenizerTestFile testFile{"directive_global.asm", "directive_global.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_globl) {
+  TokenizerTestFile testFile{"directive_globl.asm", "directive_globl.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_hidden) {
+  TokenizerTestFile testFile{"directive_hidden.asm", "directive_hidden.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_hword0) {
+  TokenizerTestFile testFile{"directive_hword0.asm", "directive_hword0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_hword1) {
+  TokenizerTestFile testFile{"directive_hword1.asm", "directive_hword1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_if0) {
+  TokenizerTestFile testFile{"directive_if0.asm", "directive_if0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_if1) {
+  TokenizerTestFile testFile{"directive_if1.asm", "directive_if1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_if2) {
+  TokenizerTestFile testFile{"directive_if2.asm", "directive_if2.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifb0) {
+  TokenizerTestFile testFile{"directive_ifb0.asm", "directive_ifb0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifb1) {
+  TokenizerTestFile testFile{"directive_ifb1.asm", "directive_ifb1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifc0) {
+  TokenizerTestFile testFile{"directive_ifc0.asm", "directive_ifc0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifc1) {
+  TokenizerTestFile testFile{"directive_ifc1.asm", "directive_ifc1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifc2) {
+  TokenizerTestFile testFile{"directive_ifc2.asm", "directive_ifc2.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifdef0) {
+  TokenizerTestFile testFile{"directive_ifdef0.asm", "directive_ifdef0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifdef1) {
+  TokenizerTestFile testFile{"directive_ifdef1.asm", "directive_ifdef1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifdef2) {
+  TokenizerTestFile testFile{"directive_ifdef2.asm", "directive_ifdef2.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifeq0) {
+  TokenizerTestFile testFile{"directive_ifeq0.asm", "directive_ifeq0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifeq1) {
+  TokenizerTestFile testFile{"directive_ifeq1.asm", "directive_ifeq1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifeq2) {
+  TokenizerTestFile testFile{"directive_ifeq2.asm", "directive_ifeq2.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifeqs0) {
+  TokenizerTestFile testFile{"directive_ifeqs0.asm", "directive_ifeqs0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifeqs1) {
+  TokenizerTestFile testFile{"directive_ifeqs1.asm", "directive_ifeqs1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifeqs2) {
+  TokenizerTestFile testFile{"directive_ifeqs2.asm", "directive_ifeqs2.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifge0) {
+  TokenizerTestFile testFile{"directive_ifge0.asm", "directive_ifge0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifge1) {
+  TokenizerTestFile testFile{"directive_ifge1.asm", "directive_ifge1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifge2) {
+  TokenizerTestFile testFile{"directive_ifge2.asm", "directive_ifge2.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifgt0) {
+  TokenizerTestFile testFile{"directive_ifgt0.asm", "directive_ifgt0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifgt1) {
+  TokenizerTestFile testFile{"directive_ifgt1.asm", "directive_ifgt1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifgt2) {
+  TokenizerTestFile testFile{"directive_ifgt2.asm", "directive_ifgt2.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifle0) {
+  TokenizerTestFile testFile{"directive_ifle0.asm", "directive_ifle0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifle1) {
+  TokenizerTestFile testFile{"directive_ifle1.asm", "directive_ifle1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifle2) {
+  TokenizerTestFile testFile{"directive_ifle2.asm", "directive_ifle2.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_iflt0) {
+  TokenizerTestFile testFile{"directive_iflt0.asm", "directive_iflt0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_iflt1) {
+  TokenizerTestFile testFile{"directive_iflt1.asm", "directive_iflt1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifnb0) {
+  TokenizerTestFile testFile{"directive_ifnb0.asm", "directive_ifnb0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifnb1) {
+  TokenizerTestFile testFile{"directive_ifnb1.asm", "directive_ifnb1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifnc0) {
+  TokenizerTestFile testFile{"directive_ifnc0.asm", "directive_ifnc0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifnc1) {
+  TokenizerTestFile testFile{"directive_ifnc1.asm", "directive_ifnc1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifndef0) {
+  TokenizerTestFile testFile{"directive_ifndef0.asm", "directive_ifndef0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifndef1) {
+  TokenizerTestFile testFile{"directive_ifndef1.asm", "directive_ifndef1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifne0) {
+  TokenizerTestFile testFile{"directive_ifne0.asm", "directive_ifne0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifne1) {
+  TokenizerTestFile testFile{"directive_ifne1.asm", "directive_ifne1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifnotdef0) {
+  TokenizerTestFile testFile{"directive_ifnotdef0.asm", "directive_ifnotdef0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ifnotdef1) {
+  TokenizerTestFile testFile{"directive_ifnotdef1.asm", "directive_ifnotdef1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_incbin0) {
+  TokenizerTestFile testFile{"directive_incbin0.asm", "directive_incbin0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_incbin1) {
+  TokenizerTestFile testFile{"directive_incbin1.asm", "directive_incbin1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_include0) {
+  TokenizerTestFile testFile{"directive_include0.asm", "directive_include0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_include1) {
+  TokenizerTestFile testFile{"directive_include1.asm", "directive_include1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_int) {
+  TokenizerTestFile testFile{"directive_int.asm", "directive_int.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_irp0) {
+  TokenizerTestFile testFile{"directive_irp0.asm", "directive_irp0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_irp1) {
+  TokenizerTestFile testFile{"directive_irp1.asm", "directive_irp1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_irpc0) {
+  TokenizerTestFile testFile{"directive_irpc0.asm", "directive_irpc0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_irpc1) {
+  TokenizerTestFile testFile{"directive_irpc1.asm", "directive_irpc1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_irpc2) {
+  TokenizerTestFile testFile{"directive_irpc2.asm", "directive_irpc2.tokens"};
+  testFile.doTest();
+}
+
+
