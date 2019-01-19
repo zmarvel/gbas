@@ -1,0 +1,2 @@
+; invalid .local
+.local

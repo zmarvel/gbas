@@ -1,0 +1,2 @@
+; invalid .ln
+.ln

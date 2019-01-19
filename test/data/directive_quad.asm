@@ -1,0 +1,4 @@
+.quad
+.quad 0, 1, 2, 3
+.quad 0x1122334455667788
+.quad 0x112233445566778899 ; warn and truncated to 0x2233445566778899

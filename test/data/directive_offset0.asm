@@ -1,0 +1,2 @@
+; invalid .offset
+.offset

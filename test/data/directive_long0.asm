@@ -1,0 +1,2 @@
+; invalid .long
+.long
