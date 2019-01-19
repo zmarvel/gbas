@@ -582,4 +582,102 @@ BOOST_AUTO_TEST_CASE(test_Tokenizer_irpc2) {
   testFile.doTest();
 }
 
+BOOST_AUTO_TEST_CASE(test_Tokenizer_lcomm0) {
+  TokenizerTestFile testFile{"directive_lcomm0.asm", "directive_lcomm0.tokens"};
+  testFile.doTest();
+}
 
+BOOST_AUTO_TEST_CASE(test_Tokenizer_lcomm1) {
+  TokenizerTestFile testFile{"directive_lcomm1.asm", "directive_lcomm1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_lcomm2) {
+  TokenizerTestFile testFile{"directive_lcomm2.asm", "directive_lcomm2.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_line0) {
+  TokenizerTestFile testFile{"directive_line0.asm", "directive_line0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_line1) {
+  TokenizerTestFile testFile{"directive_line1.asm", "directive_line1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_line2) {
+  TokenizerTestFile testFile{"directive_line2.asm", "directive_line2.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_linkonce0) {
+  TokenizerTestFile testFile{"directive_linkonce0.asm", "directive_linkonce0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_linkonce1) {
+  TokenizerTestFile testFile{"directive_linkonce1.asm", "directive_linkonce1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_linkonce2) {
+  TokenizerTestFile testFile{"directive_linkonce2.asm", "directive_linkonce2.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_list) {
+  TokenizerTestFile testFile{"directive_list.asm", "directive_list.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ln0) {
+  TokenizerTestFile testFile{"directive_ln0.asm", "directive_ln0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_ln1) {
+  TokenizerTestFile testFile{"directive_ln1.asm", "directive_ln1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_loc0) {
+  TokenizerTestFile testFile{"directive_loc0.asm", "directive_loc0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_loc1) {
+  TokenizerTestFile testFile{"directive_loc1.asm", "directive_loc1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_loc2) {
+  TokenizerTestFile testFile{"directive_loc2.asm", "directive_loc2.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_loc3) {
+  TokenizerTestFile testFile{"directive_loc3.asm", "directive_loc3.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_local0) {
+  TokenizerTestFile testFile{"directive_local0.asm", "directive_local0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_local1) {
+  TokenizerTestFile testFile{"directive_local1.asm", "directive_local1.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_long0) {
+  TokenizerTestFile testFile{"directive_long0.asm", "directive_long0.tokens"};
+  testFile.doTest();
+}
+
+BOOST_AUTO_TEST_CASE(test_Tokenizer_long1) {
+  TokenizerTestFile testFile{"directive_long1.asm", "directive_long1.tokens"};
+  testFile.doTest();
+}
