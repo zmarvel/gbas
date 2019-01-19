@@ -17,6 +17,8 @@ TEST_OBJS = $(OBJS) $(patsubst %.cpp,%.o,$(TEST_SRCS))
 $(EXE): $(EXE_OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
+test: $(TEST_EXE)
+
 $(TEST_EXE): $(TEST_OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^ -lboost_unit_test_framework
 
