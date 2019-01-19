@@ -1,0 +1,14 @@
+EOL
+.linkonce
+discard
+EOL
+.linkonce
+one_only
+EOL
+.linkonce
+same_size
+EOL
+.linkonce
+same_contents
+EOL
+EOF
