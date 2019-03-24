@@ -18,21 +18,6 @@ const std::array<char, 4> Tokenizer::operators = {
 
 
 
-TokenList::TokenList() : std::vector<Token>() {
-}
-
-void TokenList::add(Token tok) {
-  if (Tokenizer::isReserved(tok)) {
-    throw TokenizerException(tok + " is reserved");
-  }
-  push_back(tok);
-}
-
-void TokenList::add_reserved(Token tok) {
-  push_back(tok);
-}
-
-
 bool Tokenizer::isReserved(Token tok) {
   auto it = std::find(reserved.begin(), reserved.end(), tok);
   return it != reserved.end();
@@ -59,7 +44,7 @@ void Tokenizer::logError(std::ostream &out, const std::string &msg,
 }
 
 TokenList *Tokenizer::tokenize(std::basic_istream<char> &lines) {
-  auto tokens = new TokenList();
+  TokenList *tokens = new TokenList{};
 
   int lineno = 0;
   std::string tokbuf;
@@ -164,7 +149,7 @@ TokenList *Tokenizer::tokenize(std::basic_istream<char> &lines) {
           }
           break;
         case State::END_TOKEN:
-          tokens->add(Token{tokbuf});
+          tokens->push_back(Token{tokbuf});
           tokbuf.clear();
           state = State::START_TOKEN;
           break;
@@ -172,9 +157,9 @@ TokenList *Tokenizer::tokenize(std::basic_istream<char> &lines) {
           break;
       }
     }
-    tokens->add_reserved("EOL");
+    tokens->push_back("EOL");
   }
-  tokens->add_reserved("EOF");
+  tokens->push_back("EOF");
 
   return tokens;
 }

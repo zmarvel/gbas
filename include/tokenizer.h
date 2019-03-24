@@ -1,4 +1,7 @@
 
+#ifndef TOKENIZER_H
+#define TOKENIZER_H
+
 #include <array>
 #include <vector>
 #include <string>
@@ -7,7 +10,7 @@
 
 
 
-typedef std::string Token;
+using Token = std::string;
 
 
 class TokenizerException : std::exception {
@@ -30,17 +33,7 @@ class TokenizerException : std::exception {
 
 
 
-class TokenList : public std::vector<Token> {
-  public:
-    TokenList();
-    ~TokenList();
-
-    using vector::at;
-
-    void add(Token tok);
-    void add_reserved(Token tok);
-};
-
+using TokenList = std::vector<Token>;
 
 
 const int MAX_LINE_LEN = 128;
@@ -66,3 +59,5 @@ class Tokenizer {
       END_LINE,
     };
 };
+
+#endif // TOKENIZER_H

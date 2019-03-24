@@ -5,9 +5,12 @@ LDFLAGS = -g -Wall
 EXE_SRC = src/main.cpp
 EXE = gbas
 TEST_EXE = gbas_test
-SRCS = src/tokenizer.cpp
-OBJS = $(patsubst %.cpp,%.o,$(SRCS))
-EXE_OBJS = $(OBJS) $(patsubst %.cpp,%.o,$(EXE_SRC))
+SRCS = src/tokenizer.cpp \
+       src/parser.cpp \
+
+OBJS = $(SRCS:.cpp=.o)
+DEPS = $(OBJS:.o=.d)
+EXE_OBJS = $(OBJS) $(EXE_SRC:.cpp=.o)
 INC = -Iinclude
 
 TEST_SRCS = test/TokenizerTest.cpp
@@ -23,7 +26,9 @@ $(TEST_EXE): $(TEST_OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^ -lboost_unit_test_framework
 
 %.o: %.cpp Makefile
-	$(CXX) -c $(CXXFLAGS) $(INC) -o $@ $<
+	$(CXX) -MD -c $(CXXFLAGS) $(INC) -o $@ $<
+
+-include $(DEPS)
 
 clean:
-	rm -f $(OBJS) $(EXE) $(TEST_OBJS) $(TEST_EXE)
+	rm -f $(OBJS) $(DEPS) $(EXE) $(TEST_OBJS) $(TEST_EXE)

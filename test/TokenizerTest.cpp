@@ -82,6 +82,11 @@ BOOST_AUTO_TEST_CASE(test_Tokenizer_arith1) {
   testFile.doTest();
 }
 
+BOOST_AUTO_TEST_CASE(test_Tokenizer_arith2) {
+  TokenizerTestFile testFile{"arith2.asm", "arith2.tokens"};
+  testFile.doTest();
+}
+
 BOOST_AUTO_TEST_CASE(test_Tokenizer_comment0) {
   TokenizerTestFile testFile{"comment0.asm", "comment0.tokens"};
   testFile.doTest();

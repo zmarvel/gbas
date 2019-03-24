@@ -40,7 +40,9 @@ int main(int argc, char *argv[]) {
   }
 
   auto tokenizer = Tokenizer{};
-  auto tokens = tokenizer.tokenize(infile.getStream());
+  // Have to explicitly type because tokens is inferred wrong
+  // TODO investigate
+  TokenList *tokens = tokenizer.tokenize(infile.getStream());
   std::cout << tokens->size() << std::endl;
   for (auto it = tokens->begin(); it != tokens->end(); it++) {
     std::cout << *it  << std::endl;
