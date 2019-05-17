@@ -216,7 +216,7 @@ std::shared_ptr<BaseNode> Parser::parseRegister(const Token& t) {
 }
 
 
-std::shared_ptr<BaseNode> Parser::parseDRegister(const Token& t) {
+std::shared_ptr<DRegisterBase> Parser::parseDRegister(const Token& t) {
   if (t.size() != 2) {
     throw ParserException("Unrecognized Register");
   }

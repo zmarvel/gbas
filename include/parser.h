@@ -122,49 +122,31 @@ namespace AST {
       std::vector<BaseNode> mChildren;
   };
 
-  template<char reg>
-  struct Register : public Node<NodeType::REGISTER> {
-    constexpr char getReg() {
-      return reg;
-    }
+
+  class RegisterBase : public Node<NodeType::REGISTER> {
+    public:
+      virtual char reg() const = 0;
   };
 
-  template<>
-  class Register<'a'> : public Node<NodeType::REGISTER> { };
-  template<>
-  class Register<'f'> : public Node<NodeType::REGISTER> { };
-  template<>
-  class Register<'b'> : public Node<NodeType::REGISTER> { };
-  template<>
-  class Register<'c'> : public Node<NodeType::REGISTER> { };
-  template<>
-  class Register<'d'> : public Node<NodeType::REGISTER> { };
-  template<>
-  class Register<'e'> : public Node<NodeType::REGISTER> { };
-  template<>
-  class Register<'h'> : public Node<NodeType::REGISTER> { };
-  template<>
-  class Register<'l'> : public Node<NodeType::REGISTER> { };
+  template<char regc>
+  struct Register : public RegisterBase {
+    public:
+      virtual char reg() const override {
+        return regc;
+      }
+  };
+
+  class DRegisterBase : public Node<NodeType::DREGISTER> {
+    public:
+      virtual std::string reg() const = 0;
+  };
 
   template<char reg1, char reg2>
-  struct DRegister : Node<NodeType::DREGISTER>{
-    constexpr std::string getDReg() {
+  struct DRegister : public DRegisterBase {
+    virtual std::string reg() const override {
       return std::string{reg1, reg2};
     }
   };
-
-  template<>
-  class DRegister<'a', 'f'> : public Node<NodeType::DREGISTER> { };
-  template<>
-  class DRegister<'b', 'c'> : public Node<NodeType::DREGISTER> { };
-  template<>
-  class DRegister<'d', 'e'> : public Node<NodeType::DREGISTER> { };
-  template<>
-  class DRegister<'h', 'l'> : public Node<NodeType::DREGISTER> { };
-  template<>
-  class DRegister<'s', 'p'> : public Node<NodeType::DREGISTER> { };
-  template<>
-  class DRegister<'p', 'c'> : public Node<NodeType::DREGISTER> { };
 
   class Label : public Node<NodeType::LABEL> {
   };
@@ -292,7 +274,7 @@ class Parser {
     
     std::shared_ptr<AST::BaseNode> parseRegister(const Token& t);
     
-    std::shared_ptr<AST::BaseNode> parseDRegister(const Token& t);
+    std::shared_ptr<AST::DRegisterBase> parseDRegister(const Token& t);
 
     std::shared_ptr<AST::BaseNode> parseNumber(const Token& t);
 
