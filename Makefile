@@ -13,8 +13,12 @@ DEPS = $(OBJS:.o=.d)
 EXE_OBJS = $(OBJS) $(EXE_SRC:.cpp=.o)
 INC = -Iinclude
 
-TEST_SRCS = test/TokenizerTest.cpp
+TEST_SRCS = test/tokenizer_test.cpp \
+	    test/parser_test.cpp \
+
 TEST_OBJS = $(OBJS) $(patsubst %.cpp,%.o,$(TEST_SRCS))
+
+TEST_DEPS = $(patsubst %.cpp,%.d,$(TEST_SRCS))
 
 
 $(EXE): $(EXE_OBJS)
@@ -28,7 +32,15 @@ $(TEST_EXE): $(TEST_OBJS)
 %.o: %.cpp Makefile
 	$(CXX) -MD -c $(CXXFLAGS) $(INC) -o $@ $<
 
--include $(DEPS)
-
+.PHONY: clean
 clean:
-	rm -f $(OBJS) $(DEPS) $(EXE) $(TEST_OBJS) $(TEST_EXE)
+	rm -f $(OBJS) $(DEPS) $(EXE) $(TEST_OBJS) $(TEST_DEPS) $(TEST_EXE)
+
+.PHONY: ctags
+ctags:
+	ctags -R src include test
+
+check: $(TEST_EXE)
+	./$<
+
+-include $(DEPS) $(TEST_DEPS)
