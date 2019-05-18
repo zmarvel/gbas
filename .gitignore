@@ -33,3 +33,12 @@
 
 gbas
 gbas_test
+
+# Doxygen
+docs/
+
+# Coverage
+coverage.info
+coverage/
+*.gcda
+*.gcno

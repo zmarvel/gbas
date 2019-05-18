@@ -10,24 +10,40 @@ SRCS = src/tokenizer.cpp \
 
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(OBJS:.o=.d)
+COVS = $(SRCS:.cpp=.gcno)
 EXE_OBJS = $(OBJS) $(EXE_SRC:.cpp=.o)
 INC = -Iinclude
 
 TEST_SRCS = test/tokenizer_test.cpp \
 	    test/parser_test.cpp \
 
-TEST_OBJS = $(OBJS) $(patsubst %.cpp,%.o,$(TEST_SRCS))
+TEST_OBJS = $(patsubst %.cpp,%.o,$(TEST_SRCS))
 
 TEST_DEPS = $(patsubst %.cpp,%.d,$(TEST_SRCS))
 
+TEST_COVS = $(patsubst %.cpp,%.gcno,$(TEST_SRCS)) \
+	    $(patsubst %.cpp,%.gcda,$(TEST_SRCS))
+
+TEST_CXXFLAGS = --coverage
+TEST_LDFLAGS = --coverage
+
 
 $(EXE): $(EXE_OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(LDFLAGS) -o $@ $^
 
+.PHONY: test
 test: $(TEST_EXE)
 
-$(TEST_EXE): $(TEST_OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $^ -lboost_unit_test_framework
+
+$(TEST_OBJS): CXXFLAGS += $(TEST_CXXFLAGS)
+
+$(TEST_EXE): LDFLAGS += $(TEST_LDFLAGS)
+$(TEST_EXE): $(OBJS) $(TEST_OBJS)
+	$(CXX) $(LDFLAGS) -o $@ $^ -lboost_unit_test_framework
+
+.PHONY: check
+check: $(TEST_EXE)
+	./$<
 
 %.o: %.cpp Makefile
 	$(CXX) -MD -c $(CXXFLAGS) $(INC) -o $@ $<
@@ -35,12 +51,23 @@ $(TEST_EXE): $(TEST_OBJS)
 .PHONY: clean
 clean:
 	rm -f $(OBJS) $(DEPS) $(EXE) $(TEST_OBJS) $(TEST_DEPS) $(TEST_EXE)
+	rm -rf docs
+	rm -rf coverage/ coverage.info $(COVS) $(TEST_COVS)
 
 .PHONY: ctags
 ctags:
 	ctags -R src include test
 
-check: $(TEST_EXE)
-	./$<
+.PHONY: doxygen
+doxygen:
+	doxygen Doxyfile
+
+.PHONY: coverage
+coverage: CXXFLAGS += --coverage
+coverage: LDFLAGS += --coverage
+coverage: check
+	#cp $(COVS) test/
+	lcov --capture --directory . --output-file coverage.info
+	genhtml coverage.info --output-directory coverage/
 
 -include $(DEPS) $(TEST_DEPS)
