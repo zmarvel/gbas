@@ -231,5 +231,221 @@ BOOST_AUTO_TEST_CASE(parser_test_parseDRegister) {
   }
 }
 
+BOOST_AUTO_TEST_CASE(parser_test_parseNumber) {
+  Parser parser{};
+
+  {
+    auto node = parser.parseNumber("123");
+    BOOST_CHECK(node->id() == AST::NodeType::NUMBER);
+    auto num = std::static_pointer_cast<AST::Number>(node);
+    BOOST_CHECK_EQUAL(num->value(), 123);
+  }
+  {
+    auto node = parser.parseNumber("-123");
+    BOOST_CHECK(node->id() == AST::NodeType::NUMBER);
+    auto num = std::static_pointer_cast<AST::Number>(node);
+    BOOST_CHECK_EQUAL(num->value(), static_cast<uint8_t>(-123));
+  }
+  {
+    auto node = parser.parseNumber("0");
+    BOOST_CHECK(node->id() == AST::NodeType::NUMBER);
+    auto num = std::static_pointer_cast<AST::Number>(node);
+    BOOST_CHECK_EQUAL(num->value(), 0);
+  }
+  {
+    auto node = parser.parseNumber("notnumber");
+    BOOST_CHECK(node->id() == AST::NodeType::NUMBER);
+    auto num = std::static_pointer_cast<AST::Number>(node);
+    BOOST_CHECK_EQUAL(num->value(), 0);
+  }
+  {
+    auto node = parser.parseNumber("255");
+    BOOST_CHECK(node->id() == AST::NodeType::NUMBER);
+    auto num = std::static_pointer_cast<AST::Number>(node);
+    BOOST_CHECK_EQUAL(num->value(), 255);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parser_test_parseNumericOp) {
+  Parser parser{};
+
+  { // Both children are numbers
+    auto lnode = std::make_shared<AST::Number>(123);
+    auto rnode = std::make_shared<AST::Number>(112);
+    auto node = parser.parseNumericOp(lnode, "+", rnode);
+    BOOST_CHECK(node->id() == AST::NodeType::NUMERIC_OP);
+    auto op = std::dynamic_pointer_cast<AST::BaseNumericOp>(node);
+    BOOST_CHECK(op);
+    BOOST_CHECK(op->opType() == AST::BinaryOp::ADD);
+    auto addOp = std::dynamic_pointer_cast<AST::NumericOp<AST::BinaryOp::ADD>>(node);
+    BOOST_CHECK(addOp);
+    BOOST_CHECK(addOp->left().id() == AST::NodeType::NUMBER);
+    BOOST_CHECK(addOp->right().id() == AST::NodeType::NUMBER);
+  }
+
+  { // Left child is number, right child is another NumericOp
+    auto lnode = std::make_shared<AST::Number>(123);
+    auto rnode = std::make_shared<AST::NumericOp<AST::BinaryOp::SUB>>(std::make_shared<AST::Number>(200),
+                                                                      std::make_shared<AST::Number>(20));
+    auto node = parser.parseNumericOp(lnode, "-", rnode);
+    BOOST_CHECK(node->id() == AST::NodeType::NUMERIC_OP);
+    auto op = std::dynamic_pointer_cast<AST::BaseNumericOp>(node);
+    BOOST_CHECK(op);
+    BOOST_CHECK(op->opType() == AST::BinaryOp::SUB);
+    auto subOp = std::dynamic_pointer_cast<AST::NumericOp<AST::BinaryOp::SUB>>(node);
+    BOOST_CHECK(subOp);
+    BOOST_CHECK(subOp->left().id() == AST::NodeType::NUMBER);
+    BOOST_CHECK(subOp->right().id() == AST::NodeType::NUMERIC_OP);
+  }
+
+  { // Left child is a NumericOp, right child is a number
+    auto lnode = std::make_shared<AST::NumericOp<AST::BinaryOp::SUB>>(std::make_shared<AST::Number>(200),
+                                                                      std::make_shared<AST::Number>(20));
+    auto rnode = std::make_shared<AST::Number>(123);
+    auto node = parser.parseNumericOp(lnode, "*", rnode);
+    BOOST_CHECK(node->id() == AST::NodeType::NUMERIC_OP);
+    auto op = std::dynamic_pointer_cast<AST::BaseNumericOp>(node);
+    BOOST_CHECK(op);
+    BOOST_CHECK(op->opType() == AST::BinaryOp::MULT);
+    auto multOp = std::dynamic_pointer_cast<AST::NumericOp<AST::BinaryOp::MULT>>(node);
+    BOOST_CHECK(multOp);
+    BOOST_CHECK(multOp->left().id() == AST::NodeType::NUMERIC_OP);
+    BOOST_CHECK(multOp->right().id() == AST::NodeType::NUMBER);
+  }
+
+  { // Both children are NumericOps
+    auto lnode = std::make_shared<AST::NumericOp<AST::BinaryOp::SUB>>(std::make_shared<AST::Number>(200),
+                                                                      std::make_shared<AST::Number>(20));
+    auto rnode = std::make_shared<AST::NumericOp<AST::BinaryOp::SUB>>(std::make_shared<AST::Number>(200),
+                                                                      std::make_shared<AST::Number>(20));
+    auto node = parser.parseNumericOp(lnode, "/", rnode);
+    BOOST_CHECK(node->id() == AST::NodeType::NUMERIC_OP);
+    auto op = std::dynamic_pointer_cast<AST::BaseNumericOp>(node);
+    BOOST_CHECK(op);
+    BOOST_CHECK(op->opType() == AST::BinaryOp::DIV);
+    auto divOp = std::dynamic_pointer_cast<AST::NumericOp<AST::BinaryOp::DIV>>(node);
+    BOOST_CHECK(divOp);
+    BOOST_CHECK(divOp->left().id() == AST::NodeType::NUMERIC_OP);
+    BOOST_CHECK(divOp->right().id() == AST::NodeType::NUMERIC_OP);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parser_test_parseInstruction) {
+  Parser parser{};
+
+  // Invalid instructions should throw
+  BOOST_CHECK_THROW(parser.parseInstruction(""), ParserException);
+  BOOST_CHECK_THROW(parser.parseInstruction("asdf"), ParserException);
+  BOOST_CHECK_THROW(parser.parseInstruction("asdf",
+                                            std::make_shared<AST::Register<'a'>>()),
+                    ParserException);
+  BOOST_CHECK_THROW(parser.parseInstruction("asdf",
+                                            std::make_shared<AST::Register<'a'>>(),
+                                            std::make_shared<AST::Register<'a'>>()),
+                    ParserException);
+
+
+
+  // Invalid arg count should throw
+  BOOST_CHECK_THROW(parser.parseInstruction("add"), ParserException);
+  BOOST_CHECK_THROW(parser.parseInstruction("add", std::make_shared<AST::Register<'a'>>()),
+                    ParserException);
+  BOOST_CHECK_THROW(parser.parseInstruction("nop",
+                                            std::make_shared<AST::Register<'a'>>(),
+                                            std::make_shared<AST::Register<'a'>>()),
+                    ParserException);
+
+  {
+    auto node = parser.parseInstruction("nop");
+    BOOST_CHECK(node->id() == AST::NodeType::INSTRUCTION);
+    auto inst = std::dynamic_pointer_cast<AST::BaseInstruction>(node);
+    BOOST_CHECK(inst);
+    BOOST_CHECK(inst->type() == AST::InstructionType::NOP);
+    BOOST_CHECK(inst->nOperands() == 0);
+  }
+
+  {
+    auto node = parser.parseInstruction("inc", std::make_shared<AST::Register<'a'>>());
+    BOOST_CHECK(node->id() == AST::NodeType::INSTRUCTION);
+    auto inst = std::dynamic_pointer_cast<AST::BaseInstruction>(node);
+    BOOST_CHECK(inst);
+    BOOST_CHECK(inst->type() == AST::InstructionType::INC);
+    BOOST_CHECK(inst->nOperands() == 1);
+    auto inst1 = std::dynamic_pointer_cast<AST::Instruction1>(inst);
+    BOOST_CHECK(inst1);
+    auto& baseOperand = inst1->operand();
+    BOOST_CHECK(baseOperand.id() == AST::NodeType::REGISTER);
+    auto operand = dynamic_cast<AST::Register<'a'>&>(baseOperand);
+    BOOST_CHECK(operand.reg() == 'a');
+  }
+
+  {
+    auto node = parser.parseInstruction("add",
+                                        std::make_shared<AST::Register<'a'>>(),
+                                        std::make_shared<AST::Number>(1));
+    BOOST_CHECK(node->id() == AST::NodeType::INSTRUCTION);
+    auto inst = std::dynamic_pointer_cast<AST::BaseInstruction>(node);
+    BOOST_CHECK(inst);
+    BOOST_CHECK(inst->type() == AST::InstructionType::ADD);
+    BOOST_CHECK(inst->nOperands() == 2);
+    auto inst2 = std::dynamic_pointer_cast<AST::Instruction2>(inst);
+    BOOST_CHECK(inst2);
+    auto& baseLoperand = inst2->loperand();
+    BOOST_CHECK(baseLoperand.id() == AST::NodeType::REGISTER);
+    auto loperand = dynamic_cast<AST::Register<'a'>&>(baseLoperand);
+    BOOST_CHECK(loperand.reg() == 'a');
+
+    auto& baseRoperand = inst2->roperand();
+    BOOST_CHECK(baseRoperand.id() == AST::NodeType::NUMBER);
+    auto roperand = dynamic_cast<AST::Number&>(baseRoperand);
+    BOOST_CHECK(roperand.value() == 1);
+  }
+
+  { // One-argument version of sub
+    auto node = parser.parseInstruction("sub", std::make_shared<AST::Number>(1));
+    BOOST_CHECK(node->id() == AST::NodeType::INSTRUCTION);
+    auto inst = std::dynamic_pointer_cast<AST::BaseInstruction>(node);
+    BOOST_CHECK(inst);
+    BOOST_CHECK(inst->type() == AST::InstructionType::SUB);
+    BOOST_CHECK(inst->nOperands() == 1);
+    auto inst1 = std::dynamic_pointer_cast<AST::Instruction1>(inst);
+    BOOST_CHECK(inst1);
+
+    auto& baseOperand = inst1->operand();
+    BOOST_CHECK(baseOperand.id() == AST::NodeType::NUMBER);
+    auto operand = dynamic_cast<AST::Number&>(baseOperand);
+    BOOST_CHECK(operand.value() == 1);
+  }
+
+  { // Two-argument version of sub
+    auto node = parser.parseInstruction("sub", std::make_shared<AST::Number>(1),
+                                        std::make_shared<AST::Number>(2));
+    BOOST_CHECK(node->id() == AST::NodeType::INSTRUCTION);
+    auto inst = std::dynamic_pointer_cast<AST::BaseInstruction>(node);
+    BOOST_CHECK(inst);
+    BOOST_CHECK(inst->type() == AST::InstructionType::SUB);
+    BOOST_CHECK(inst->nOperands() == 2);
+    auto inst2 = std::dynamic_pointer_cast<AST::Instruction2>(inst);
+    BOOST_CHECK(inst2);
+
+    auto& baseLoperand = inst2->loperand();
+    BOOST_CHECK(baseLoperand.id() == AST::NodeType::NUMBER);
+    auto loperand = dynamic_cast<AST::Number&>(baseLoperand);
+    BOOST_CHECK(loperand.value() == 1);
+
+    auto& baseRoperand = inst2->roperand();
+    BOOST_CHECK(baseRoperand.id() == AST::NodeType::NUMBER);
+    auto roperand = dynamic_cast<AST::Number&>(baseRoperand);
+    BOOST_CHECK(roperand.value() == 2);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parser_test_parseLabel) {
+  // TODO
+}
+
+BOOST_AUTO_TEST_CASE(parser_test_parseOperand) {
+  // TODO
+}
 
 BOOST_AUTO_TEST_SUITE_END();

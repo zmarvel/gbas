@@ -3,15 +3,16 @@
 
 #include "parser.h"
 
-Parser::Parser() {
-
-}
+Parser::Parser() :
+  mRoot{}
+{ }
 
 Parser::~Parser() {
 
 }
 
 
+using namespace AST;
 
 static const std::array<const Token, 8> registers = {
   "a",
@@ -85,8 +86,6 @@ static InstructionPropsList instructions{ {
 } };
 
 
-using namespace AST;
-
 #if 0
 template<class T>
 AST::Node<T> Parser::parse(TokenList *tokens, int i) {
@@ -109,21 +108,59 @@ AST::Node<T> Parser::parse(TokenList *tokens, int i) {
 #endif
 
 
-std::shared_ptr<BaseNode> Parser::parse(TokenList& tokens, int i, BaseNode prev) {
+std::shared_ptr<Root> Parser::parse(TokenList& tokens) {
+  int i = 0;
   Token& currTok = tokens.at(i);
-  if (isNumber(currTok)) {
-    return parseNumber(currTok);
-  } else if (isNumericOp(currTok)) {
-    std::shared_ptr<BaseNode> rrand = parse(tokens, i+1);
-    return parseNumericOp(prev, currTok, *rrand);
-  } else if (isLabel(currTok)) {
-    //BaseNode label = parseLabel(currTok);
-    //return label;
-  } else if (isInstruction(currTok)) {
-    // How many operands does it have?
-    // Based on that we can look ahead.
+  // TODO: only label definitions and instructions should start a line
+  while (!isEof(currTok)) {
+    if (isNewline(currTok)) {
+      i++;
+    } else if (isNumber(currTok)) {
+      std::shared_ptr<BaseNode> numl = parseNumber(currTok);
+      if (isNumericOp(tokens.at(i+1))) {
+        std::shared_ptr<BaseNode> op = parseNumericOp(numl, tokens.at(i+1),
+                                                      parseNumber(tokens.at(i+2)));
+        mRoot.add(*op);
+        i += 3;
+      } else {
+        mRoot.add(*numl);
+        i++;
+      }
+    } else if (isLabel(currTok)) {
+      mRoot.add(*parseLabel(currTok));
+      i++;
+    } else {
+      // How many operands does it have?
+      // Based on that we can look ahead.
+      auto props = findInstruction(currTok);
+      if (props != instructions.end()) {
+        int newlineAt = expectNewline(tokens,
+                                      i+std::min(props->args1, props->args2),
+                                      i+std::max(props->args1, props->args2));
+        switch (newlineAt) {
+          case 0:
+            mRoot.add(*parseInstruction(currTok));
+            i++;
+            break;
+          case 1:
+            mRoot.add(*parseInstruction(currTok, parseOperand(tokens.at(i+1))));
+            i += 2;
+            break;
+          case 2:
+            mRoot.add(*parseInstruction(currTok, parseOperand(tokens.at(i+1)),
+                                        parseOperand(tokens.at(i+2))));
+            i += 3;
+            break;
+          default:
+            throw ParserException("Expecting newline after instruction");
+        }
+      } else {
+        throw ParserException("Unrecognized token");
+      }
+    }
+    currTok = tokens.at(i);
   }
-  return std::make_shared<Root>();
+  return std::shared_ptr<Root>{&mRoot};
 }
 
 bool Parser::isNumber(const Token& tok) {
@@ -198,11 +235,11 @@ bool Parser::isDRegister(const Token& tok) {
     doubleRegisters.end();
 }
 
-std::shared_ptr<BaseNode> Parser::parseRegister(const Token& t) {
-  if (t.size() != 1) {
+std::shared_ptr<AST::RegisterBase> Parser::parseRegister(const Token& tok) {
+  if (tok.size() != 1) {
     throw ParserException("Unrecognized Register");
   }
-  switch (t.at(0)) {
+  switch (tok.at(0)) {
     case 'a': return std::make_shared<Register<'a'>>();
     case 'f': return std::make_shared<Register<'f'>>();
     case 'b': return std::make_shared<Register<'b'>>();
@@ -242,17 +279,24 @@ std::shared_ptr<BaseNode> Parser::parseNumber(const Token& t) {
 }
 
 
-std::shared_ptr<BaseNode> Parser::parseNumericOp(BaseNode lrand, const Token& t, BaseNode rrand) {
-  if (t == "+") {
-    return std::make_shared<NumericOp<BinaryOp::ADD>>(lrand, rrand);
-  } else if (t == "-") {
-    return std::make_shared<NumericOp<BinaryOp::SUB>>(lrand, rrand);
-  } else if (t == "*") {
-    return std::make_shared<NumericOp<BinaryOp::MULT>>(lrand, rrand);
-  } else if (t == "/") {
-    return std::make_shared<NumericOp<BinaryOp::DIV>>(lrand, rrand);
+std::shared_ptr<BaseNode> Parser::parseNumericOp(std::shared_ptr<BaseNode> lrand,
+                                                 const Token& t,
+                                                 std::shared_ptr<BaseNode> rrand) {
+  if ((lrand->id() != NodeType::NUMBER && lrand->id() != NodeType::NUMERIC_OP) ||
+      (rrand->id() != NodeType::NUMBER && rrand->id() != NodeType::NUMERIC_OP)) {
+    throw ParserException("Invalid NumericOp operand types");
   } else {
-    throw ParserException("Unrecognized NumericOp token");
+    if (t == "+") {
+      return std::make_shared<NumericOp<BinaryOp::ADD>>(lrand, rrand);
+    } else if (t == "-") {
+      return std::make_shared<NumericOp<BinaryOp::SUB>>(lrand, rrand);
+    } else if (t == "*") {
+      return std::make_shared<NumericOp<BinaryOp::MULT>>(lrand, rrand);
+    } else if (t == "/") {
+      return std::make_shared<NumericOp<BinaryOp::DIV>>(lrand, rrand);
+    } else {
+      throw ParserException("Unrecognized NumericOp token");
+    }
   }
 }
 
@@ -267,7 +311,8 @@ std::shared_ptr<BaseNode> Parser::parseInstruction(const Token& tok) {
   return std::make_shared<Instruction0>(props->type);
 }
 
-std::shared_ptr<BaseNode> Parser::parseInstruction(const Token& tok, BaseNode rand) {
+std::shared_ptr<BaseNode> Parser::parseInstruction(const Token& tok,
+                                                   std::shared_ptr<BaseNode> rand) {
   auto props = findInstruction(tok);
   if (props == instructions.end()) {
     throw ParserException("Unrecognized instruction");
@@ -278,7 +323,9 @@ std::shared_ptr<BaseNode> Parser::parseInstruction(const Token& tok, BaseNode ra
   return std::make_shared<Instruction1>(props->type, rand);
 }
 
-std::shared_ptr<BaseNode> Parser::parseInstruction(const Token& tok, BaseNode lrand, BaseNode rrand) {
+std::shared_ptr<BaseNode> Parser::parseInstruction(const Token& tok,
+                                                   std::shared_ptr<BaseNode> rand1,
+                                                   std::shared_ptr<BaseNode> rand2) {
   auto props = findInstruction(tok);
   if (props == instructions.end()) {
     throw ParserException("Unrecognized instruction");
@@ -286,7 +333,38 @@ std::shared_ptr<BaseNode> Parser::parseInstruction(const Token& tok, BaseNode lr
     throw ParserException("Too many arguments for instruction");
   }
 
-  return std::make_shared<Instruction2>(props->type, lrand, rrand);
+  return std::make_shared<Instruction2>(props->type, rand1, rand2);
 }
 
+std::shared_ptr<BaseNode> Parser::parseLabel(const Token& tok) {
+  return std::make_shared<Label>(tok);
+}
 
+std::shared_ptr<BaseNode> Parser::parseOperand(const Token& tok) {
+  if (isRegister(tok)) {
+    return parseRegister(tok);
+  } else if (isNumber(tok)) {
+    return parseNumber(tok);
+  } else if (isLabel(tok)) {
+    return parseLabel(tok);
+  } else {
+    throw ParserException("Unable to determine operand type");
+  }
+}
+
+bool Parser::isNewline(const Token& tok) {
+  return tok == "EOL";
+}
+
+int Parser::expectNewline(const TokenList& list, int start, int max) {
+  for (int i = start; i < max; i++) {
+    if (isNewline(list.at(i))) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+bool Parser::isEof(const Token& tok) {
+  return tok == "EOF";
+}
