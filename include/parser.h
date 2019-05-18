@@ -160,7 +160,7 @@ namespace AST {
         mName{name}
       { }
 
-      std::string getName() const {
+      const std::string& name() const {
         return mName;
       }
 

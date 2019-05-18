@@ -24,9 +24,6 @@ TEST_DEPS = $(patsubst %.cpp,%.d,$(TEST_SRCS))
 TEST_COVS = $(patsubst %.cpp,%.gcno,$(TEST_SRCS)) \
 	    $(patsubst %.cpp,%.gcda,$(TEST_SRCS))
 
-TEST_CXXFLAGS = --coverage
-TEST_LDFLAGS = --coverage
-
 
 $(EXE): $(EXE_OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $^
@@ -35,9 +32,6 @@ $(EXE): $(EXE_OBJS)
 test: $(TEST_EXE)
 
 
-$(TEST_OBJS): CXXFLAGS += $(TEST_CXXFLAGS)
-
-$(TEST_EXE): LDFLAGS += $(TEST_LDFLAGS)
 $(TEST_EXE): $(OBJS) $(TEST_OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $^ -lboost_unit_test_framework
 
@@ -66,7 +60,6 @@ doxygen:
 coverage: CXXFLAGS += --coverage
 coverage: LDFLAGS += --coverage
 coverage: check
-	#cp $(COVS) test/
 	lcov --capture --directory . --output-file coverage.info
 	genhtml coverage.info --output-directory coverage/
 

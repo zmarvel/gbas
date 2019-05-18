@@ -337,6 +337,9 @@ std::shared_ptr<BaseNode> Parser::parseInstruction(const Token& tok,
 }
 
 std::shared_ptr<BaseNode> Parser::parseLabel(const Token& tok) {
+  if (!isLabel(tok)) {
+    throw ParserException("Invalid label");
+  }
   return std::make_shared<Label>(tok);
 }
 
@@ -344,6 +347,8 @@ std::shared_ptr<BaseNode> Parser::parseOperand(const Token& tok) {
   if (isRegister(tok)) {
     return parseRegister(tok);
   } else if (isNumber(tok)) {
+    // TODO: handle numeric ops. Maybe a version of this function accepting a
+    // TokenList?
     return parseNumber(tok);
   } else if (isLabel(tok)) {
     return parseLabel(tok);

@@ -441,11 +441,59 @@ BOOST_AUTO_TEST_CASE(parser_test_parseInstruction) {
 }
 
 BOOST_AUTO_TEST_CASE(parser_test_parseLabel) {
-  // TODO
+  Parser parser{};
+
+  BOOST_CHECK_THROW(parser.parseLabel("1asdf"), ParserException);
+  BOOST_CHECK_THROW(parser.parseLabel(""), ParserException);
+  BOOST_CHECK_THROW(parser.parseLabel(" "), ParserException);
+  BOOST_CHECK_THROW(parser.parseLabel("asdf-1"), ParserException);
+  BOOST_CHECK_THROW(parser.parseLabel("a@"), ParserException);
+  BOOST_CHECK_THROW(parser.parseLabel("a:"), ParserException);
+
+  {
+    auto node = parser.parseLabel("asdf12aa23");
+    BOOST_CHECK(node->id() == AST::NodeType::LABEL);
+    auto label = std::dynamic_pointer_cast<AST::Label>(node);
+    BOOST_CHECK(label);
+    BOOST_CHECK(label->name() == "asdf12aa23");
+  }
+
 }
 
 BOOST_AUTO_TEST_CASE(parser_test_parseOperand) {
-  // TODO
+  Parser parser{};
+
+  BOOST_CHECK_THROW(parser.parseOperand(""), ParserException);
+  // Instructions are not valid labels
+  BOOST_CHECK_THROW(parser.parseOperand("halt"), ParserException);
+  // Can't start with an operand
+  BOOST_CHECK_THROW(parser.parseOperand("+"), ParserException);
+
+  { // Labels are valid operands
+    auto node = parser.parseOperand("asdf12aa23");
+    BOOST_CHECK(node->id() == AST::NodeType::LABEL);
+    auto label = std::dynamic_pointer_cast<AST::Label>(node);
+    BOOST_CHECK(label);
+    BOOST_CHECK(label->name() == "asdf12aa23");
+  }
+
+  { // Numbers are valid operands
+    auto node = parser.parseOperand("123");
+    BOOST_CHECK(node->id() == AST::NodeType::NUMBER);
+    auto num = std::dynamic_pointer_cast<AST::Number>(node);
+    BOOST_CHECK(num);
+    BOOST_CHECK(num->value() == 123);
+  }
+
+  { // Registers are valid operands
+    auto node = parser.parseOperand("d");
+    BOOST_CHECK(node->id() == AST::NodeType::REGISTER);
+    auto regBase = std::dynamic_pointer_cast<AST::RegisterBase>(node);
+    BOOST_CHECK(regBase);
+    BOOST_CHECK(regBase->reg() == 'd');
+    auto reg = std::dynamic_pointer_cast<AST::Register<'d'>>(node);
+    BOOST_CHECK(reg);
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END();
