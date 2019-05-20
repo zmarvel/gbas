@@ -5,9 +5,10 @@
 
 class InputFile {
   public:
-    InputFile(std::string filename) : filename(filename) {
-      stream = std::ifstream{filename};
-    }
+    InputFile(std::string filename) :
+       filename{filename},
+       stream{filename}
+    { }
 
     ~InputFile() {
       stream.close();
