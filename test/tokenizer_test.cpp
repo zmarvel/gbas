@@ -32,10 +32,10 @@ BOOST_AUTO_TEST_CASE(tokenizer_test_tokenize0) {
 class TokenizerTestFile {
   public:
     explicit TokenizerTestFile(std::string filename, std::string expectedFilename) :
-      filename(filename), expectedFilename(expectedFilename) {
-        stream = std::ifstream{std::string{"test/data/"} + filename};
-        expectedStream = std::ifstream{std::string{"test/data/"} + expectedFilename};
-    }
+      filename{filename}, expectedFilename{expectedFilename},
+        stream{std::string{"test/data/"} + filename},
+        expectedStream{std::string{"test/data/"} + expectedFilename}
+    { }
 
     ~TokenizerTestFile() {
       stream.close();
