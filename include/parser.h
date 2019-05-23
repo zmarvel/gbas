@@ -81,7 +81,8 @@ namespace AST {
     DREGISTER,
     LABEL,
     NUMBER,
-    NUMERIC_OP,
+    BINARY_OP,
+    UNARY_OP,
     INVALID,
   };
 
@@ -104,19 +105,23 @@ namespace AST {
         mChildren{}
       { }
 
-      void add(BaseNode child) {
+      Root(std::vector<std::shared_ptr<BaseNode>> children) :
+        mChildren{children}
+      { }
+
+      void add(std::shared_ptr<BaseNode> child) {
         mChildren.push_back(child);
       }
 
       BaseNode& child(size_t i) {
-        return mChildren.at(i);
+        return *mChildren.at(i);
       }
 
-      std::vector<BaseNode>::iterator begin() {
+      std::vector<std::shared_ptr<BaseNode>>::iterator begin() {
         return mChildren.begin();
       }
 
-      std::vector<BaseNode>::iterator end() {
+      std::vector<std::shared_ptr<BaseNode>>::iterator end() {
         return mChildren.end();
       }
 
@@ -125,7 +130,7 @@ namespace AST {
       }
 
     private:
-      std::vector<BaseNode> mChildren;
+      std::vector<std::shared_ptr<BaseNode>> mChildren;
   };
 
 
@@ -156,7 +161,7 @@ namespace AST {
 
   class Label : public Node<NodeType::LABEL> {
     public:
-      Label(std::string(name)) :
+      Label(const std::string& name) :
         mName{name}
       { }
 
@@ -182,7 +187,7 @@ namespace AST {
       uint8_t mValue;
   };
 
-  enum class BinaryOp {
+  enum class BinaryOpType {
     ADD,
     SUB,
     MULT,
@@ -190,22 +195,23 @@ namespace AST {
     INVALID,
   };
 
-  class BaseNumericOp : public Node<NodeType::NUMERIC_OP> {
+  class BaseBinaryOp : public Node<NodeType::BINARY_OP> {
     public:
-      virtual BinaryOp opType() const {
-        return BinaryOp::INVALID;
+      virtual BinaryOpType opType() const {
+        return BinaryOpType::INVALID;
       }
   };
 
-  template<BinaryOp Top>
-  class NumericOp : public BaseNumericOp {
+  template<BinaryOpType Top>
+  class BinaryOp : public BaseBinaryOp {
     public:
-      explicit NumericOp(std::shared_ptr<BaseNode> l, std::shared_ptr<BaseNode> r) :
+      explicit BinaryOp(std::shared_ptr<BaseNode> l,
+                        std::shared_ptr<BaseNode> r) :
         mL{l}, mR{r}
       {
       }
 
-      virtual BinaryOp opType() const {
+      virtual BinaryOpType opType() const {
         return Top;
       }
 
@@ -221,10 +227,43 @@ namespace AST {
       std::shared_ptr<BaseNode> mL, mR;
   };
 
-  using AddOp = NumericOp<BinaryOp::ADD>;
-  using SubOp = NumericOp<BinaryOp::SUB>;
-  using MultOp = NumericOp<BinaryOp::MULT>;
-  using DivOp = NumericOp<BinaryOp::DIV>;
+  using AddOp = BinaryOp<BinaryOpType::ADD>;
+  using SubOp = BinaryOp<BinaryOpType::SUB>;
+  using MultOp = BinaryOp<BinaryOpType::MULT>;
+  using DivOp = BinaryOp<BinaryOpType::DIV>;
+
+  enum class UnaryOpType {
+    NEG,
+    INVALID,
+  };
+
+  class BaseUnaryOp : public Node<NodeType::UNARY_OP> {
+    public:
+      virtual UnaryOpType opType() const {
+        return UnaryOpType::INVALID;
+      }
+  };
+
+  template<UnaryOpType Top>
+  class UnaryOp : public BaseUnaryOp {
+    public:
+      explicit UnaryOp(std::shared_ptr<BaseNode> rand) :
+        mRand{rand}
+      { }
+
+      virtual UnaryOpType opType() const {
+        return Top;
+      }
+
+      BaseNode& operand() {
+        return *mRand;
+      }
+
+    private:
+      std::shared_ptr<BaseNode> mRand;
+  };
+
+  using NegOp = UnaryOp<UnaryOpType::NEG>;
 
   class BaseInstruction : public Node<NodeType::INSTRUCTION> {
     public:
@@ -313,10 +352,36 @@ struct InstructionProps {
 
 using InstructionPropsList = const std::array<const InstructionProps, 22+5+5+5+7>;
 
+
+/*
+ * program → line* EOF ;
+ *
+ * line → instruction | label | directive ;
+ *
+ * instruction → instruction0 | instruction1 | instruction2 ;
+ * instruction0 → INSTRUCTION newline ;
+ * instruction1 → INSTRUCTION operand newline ;
+ * instruction2 → INSTRUCTION operand "," operand newline ;
+ *
+ * operand → REGISTER | DREGISTER | addition ;
+ * addition → multiplication ( ( "+" | "-" ) multiplication )* ;
+ * multiplication → unary ( ( "*" | "/" ) unary )* ;
+ * unary → "-" unary | primary ;
+ * primary → NUMBER | LABEL ;
+ *
+ *
+ * label → LABEL ":" ;
+ * 
+ * directive → "." DIRECTIVE ;
+ *
+ * newline → "EOL"
+ */
+
+
 class Parser {
 
   public:
-    Parser();
+    Parser(TokenList& tokens);
     ~Parser();
 
     /**
@@ -325,7 +390,44 @@ class Parser {
      * @param tokens: Input list of tokens.
      * @param i: Current position in the list (allowing recursive calls).
      */
-    std::shared_ptr<AST::Root> parse(TokenList& tokens);
+    std::shared_ptr<AST::BaseNode> parse();
+
+    /**
+     * Return the next Token in the list and increment the position counter.
+     * Throws an exception when there are no more Tokens.
+     */
+    Token next();
+
+    /**
+     * Return the next Token in the list without incrementing the position
+     * counter. Throws an exception when there are no more Tokens.
+     */
+    Token peek();
+
+    /**
+     * Return the "next next" Token in the list without incrementing the
+     * position counter. Throws an exception when there are no more Tokens.
+     */
+    Token peekNext();
+
+    std::shared_ptr<AST::BaseNode> program();
+
+    std::shared_ptr<AST::BaseNode> line();
+    std::shared_ptr<AST::BaseNode> instruction();
+    std::shared_ptr<AST::BaseNode> operand();
+    std::shared_ptr<AST::BaseNode> register_();
+    std::shared_ptr<AST::BaseNode> dregister();
+    std::shared_ptr<AST::BaseNode> addition();
+    std::shared_ptr<AST::BaseNode> multiplication();
+    std::shared_ptr<AST::BaseNode> unary();
+    std::shared_ptr<AST::BaseNode> primary();
+    std::shared_ptr<AST::BaseNode> label();
+    std::shared_ptr<AST::BaseNode> number();
+
+    /**
+     * Read from tokens, starting at pos, until EOF is encountered.
+     */
+    TokenList readLine(TokenList& tokens, int pos);
     
     /**
      * Convert tok to a Register node, or raise an exception if this is not
@@ -372,6 +474,8 @@ class Parser {
     std::shared_ptr<AST::BaseNode> parseInstruction(const Token& tok,
                                                     std::shared_ptr<AST::BaseNode> rand1,
                                                     std::shared_ptr<AST::BaseNode> rand2);
+
+    std::shared_ptr<AST::BaseNode> parseInstruction(const Token& tok, const TokenList& rands);
 
     /**
      * Convert tok to a Label node. If this is not possible, raise an exception.
@@ -439,7 +543,9 @@ class Parser {
 
 
   private:
+    TokenList mTokens;
     AST::Root mRoot;
+    int mPos;
 };
 
 class ParserException : std::exception {
