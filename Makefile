@@ -66,7 +66,7 @@ doxygen:
 .PHONY: coverage
 coverage: CXXFLAGS += --coverage
 coverage: LDFLAGS += --coverage
-coverage: check
+coverage: clean check
 	lcov --capture --directory . --output-file coverage.info
 	genhtml coverage.info --output-directory coverage/
 
