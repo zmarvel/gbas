@@ -278,43 +278,48 @@ namespace AST {
 
   class BaseInstruction : public Node<NodeType::INSTRUCTION> {
     public:
-      BaseInstruction() :
-        mType{InstructionType::INVALID},
-        mNOperands{0}
-      { }
-
-      BaseInstruction(InstructionType type, int nOperands) :
-        mType{type},
-        mNOperands{nOperands}
-      { }
-
       InstructionType type() const {
         return mType;
       }
 
-      int nOperands() const {
-        return mNOperands;
-      }
+      virtual int nOperands() const = 0;
 
-    protected: 
-      InstructionType mType;
-      int mNOperands;
-  };
-
-  class Instruction0 : public BaseInstruction {
-    public:
-      Instruction0(InstructionType type) :
-        BaseInstruction{type, 0}
+    protected:
+      BaseInstruction() :
+        mType{InstructionType::INVALID}
       { }
 
-    private:
+      BaseInstruction(InstructionType type) :
+        mType{type}
+      { }
+
       InstructionType mType;
   };
 
-  class Instruction1 : public BaseInstruction {
+  template<int NOperands>
+  class Instruction : public BaseInstruction {
+    public:
+      virtual int nOperands() const {
+        return NOperands;
+      }
+
+    protected:
+      Instruction(InstructionType type) :
+        BaseInstruction{type}
+      { }
+  };
+
+  class Instruction0 : public Instruction<0> {
+    public:
+      Instruction0(InstructionType type) :
+        Instruction<0>{type}
+      { }
+  };
+
+  class Instruction1 : public Instruction<1> {
     public:
       Instruction1(InstructionType type, std::shared_ptr<BaseNode> operand) :
-        BaseInstruction{type, 1},
+        Instruction<1>{type},
         mOperand{operand}
       { }
 
@@ -326,11 +331,11 @@ namespace AST {
       std::shared_ptr<BaseNode> mOperand;
   };
 
-  class Instruction2 : public BaseInstruction {
+  class Instruction2 : public Instruction<2> {
     public:
       Instruction2(InstructionType type, std::shared_ptr<BaseNode> left,
                    std::shared_ptr<BaseNode> right) :
-        BaseInstruction{type, 2},
+        Instruction<2>{type},
         mLoperand{left},
         mRoperand{right}
       { }
@@ -344,7 +349,6 @@ namespace AST {
       }
 
     private:
-      InstructionType mType;
       std::shared_ptr<BaseNode> mLoperand, mRoperand;
 
   };

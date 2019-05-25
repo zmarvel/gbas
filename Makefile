@@ -10,7 +10,7 @@ SRCS = src/tokenizer.cpp \
        src/assembler.cpp \
 
 OBJS = $(SRCS:.cpp=.o)
-DEPS = $(OBJS:.o=.d)
+DEPS = $(SRCS:.cpp=.d)
 COVS = $(SRCS:.cpp=.gcda) \
     $(SRCS:.cpp=.gcno)
 EXE_OBJS = $(OBJS) $(EXE_SRC:.cpp=.o)
@@ -20,12 +20,12 @@ TEST_SRCS = test/tokenizer_test.cpp \
 	    test/parser_test.cpp \
 	    test/assembler_test.cpp \
 
-TEST_OBJS = $(patsubst %.cpp,%.o,$(TEST_SRCS))
+TEST_OBJS = $(TEST_SRCS:.cpp=.o)
 
-TEST_DEPS = $(patsubst %.cpp,%.d,$(TEST_SRCS))
+TEST_DEPS = $(TEST_SRCS:.cpp=.d)
 
-TEST_COVS = $(patsubst %.cpp,%.gcno,$(TEST_SRCS)) \
-	    $(patsubst %.cpp,%.gcda,$(TEST_SRCS))
+TEST_COVS = $(TEST_SRCS:.cpp=.gcno) \
+    $(TEST_SRCS:.cpp=.gcda)
 
 
 $(EXE): $(EXE_OBJS)
@@ -41,9 +41,9 @@ $(TEST_EXE): $(OBJS) $(TEST_OBJS)
 .PHONY: check
 check: $(TEST_EXE)
 ifdef CHECK_LOG
-	-./$< $(CHECK_OPTIONS) > $(CHECK_LOG)
+	-./$(TEST_EXE) $(CHECK_OPTIONS) > $(CHECK_LOG)
 else
-	-./$< $(CHECK_OPTIONS) 
+	-./$(TEST_EXE) $(CHECK_OPTIONS) 
 endif
 
 %.o: %.cpp Makefile
@@ -66,7 +66,7 @@ doxygen:
 .PHONY: coverage
 coverage: CXXFLAGS += --coverage
 coverage: LDFLAGS += --coverage
-coverage: clean check
+coverage: check
 	lcov --capture --directory . --output-file coverage.info
 	genhtml coverage.info --output-directory coverage/
 
