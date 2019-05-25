@@ -1,6 +1,6 @@
 
-CXXFLAGS = -g -Wall -std=c++11
-LDFLAGS = -g -Wall
+CXXFLAGS += -g -Wextra -Wall -std=c++11
+LDFLAGS += -g -Wextra -Wall
 
 EXE_SRC = src/main.cpp
 EXE = gbas

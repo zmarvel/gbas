@@ -67,9 +67,9 @@ static InstructionPropsList instructions{ {
   {"pop", InstructionType::POP, 1, 1},
 
   {"jr", InstructionType::JR, 1, 2},
-  {"ret", InstructionType::RET, 0},
-  {"jp", InstructionType::JP, 0},
-  {"call", InstructionType::CALL, 0},
+  {"ret", InstructionType::RET, 0, 0},
+  {"jp", InstructionType::JP, 0, 0},
+  {"call", InstructionType::CALL, 0, 0},
   {"rst", InstructionType::RST, 1, 1},
 
   {"nop", InstructionType::NOP, 0, 0},
@@ -94,7 +94,13 @@ Token Parser::next() {
 }
 
 Token Parser::peek() {
-  return mTokens.at(mPos);
+  if (static_cast<size_t>(mPos) < mTokens.size()) {
+    return mTokens.at(mPos);
+  } else {
+    // Assume no spaces will have survived tokenization. This is admittedly a
+    // hack ;)
+    return " ";
+  }
 }
 
 Token Parser::peekNext() {
@@ -208,34 +214,51 @@ std::shared_ptr<BaseNode> Parser::dregister() {
 
 std::shared_ptr<BaseNode> Parser::addition() {
   auto left = multiplication();
-  switch (next().at(0)) {
-    case '+':
-      return std::make_shared<AddOp>(left, multiplication());
-    case '-':
-      return std::make_shared<SubOp>(left, multiplication());
-    default:
-      throw ParserException("Unrecognized addition operation");
+  while (isAddition(peek())) {
+    auto op = next().at(0);
+    switch (op) {
+      case '+':
+        left = std::make_shared<AddOp>(left, multiplication());
+        break;
+      case '-':
+        left = std::make_shared<SubOp>(left, multiplication());
+        break;
+    }
   }
+  return left;
+}
+
+bool Parser::isAddition(const Token& tok) {
+  return (tok == "+") || (tok == "-");
 }
 
 std::shared_ptr<BaseNode> Parser::multiplication() {
   auto left = unary();
-  switch (next().at(0)) {
-    case '*':
-      return std::make_shared<MultOp>(left, unary());
-    case '/':
-      return std::make_shared<DivOp>(left, unary());
-    default:
-      throw ParserException("Unrecognized multiplication operation");
+  while (isMultiplication(peek())) {
+    auto op = next().at(0);
+    switch (op) {
+      case '*':
+        left = std::make_shared<MultOp>(left, unary());
+        break;
+      case '/':
+        left = std::make_shared<DivOp>(left, unary());
+        break;
+    }
   }
+  return left;
+}
+
+bool Parser::isMultiplication(const Token& tok) {
+  return (tok == "*") || (tok == "/");
 }
 
 std::shared_ptr<BaseNode> Parser::unary() {
-  switch (next().at(0)) {
+  switch (peek().at(0)) {
     case '-':
+      next();
       return std::make_shared<NegOp>(unary());
     default:
-      throw ParserException("Unrecognized unary operation");
+      return primary();
   }
 }
 
@@ -272,7 +295,7 @@ bool Parser::isEof(const Token& tok) {
   return tok == "EOF";
 }
 
-TokenList Parser::readLine(TokenList& tokens, int pos) {
+TokenList Parser::readLine(TokenList& tokens) {
   TokenList list{};
   for (int i = 0; tokens.at(i) != "EOL"; i++) {
     list.push_back(tokens.at(i));

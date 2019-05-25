@@ -418,7 +418,9 @@ class Parser {
     std::shared_ptr<AST::BaseNode> register_();
     std::shared_ptr<AST::BaseNode> dregister();
     std::shared_ptr<AST::BaseNode> addition();
+    bool isAddition(const Token& tok);
     std::shared_ptr<AST::BaseNode> multiplication();
+    bool isMultiplication(const Token& tok);
     std::shared_ptr<AST::BaseNode> unary();
     std::shared_ptr<AST::BaseNode> primary();
     std::shared_ptr<AST::BaseNode> label();
@@ -427,7 +429,7 @@ class Parser {
     /**
      * Read from tokens, starting at pos, until EOF is encountered.
      */
-    TokenList readLine(TokenList& tokens, int pos);
+    TokenList readLine(TokenList& tokens);
     
     /**
      * Convert tok to a Register node, or raise an exception if this is not

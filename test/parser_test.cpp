@@ -327,74 +327,136 @@ BOOST_AUTO_TEST_CASE(parser_test_number) {
     auto num = std::static_pointer_cast<AST::Number>(node);
     BOOST_CHECK_EQUAL(num->value(), 255);
   }
+}
+
+BOOST_AUTO_TEST_CASE(parser_test_unary) {
+  {
+    TokenList tokens{"123"};
+    Parser parser{tokens};
+    auto node = parser.unary();
+    BOOST_CHECK(node->id() == AST::NodeType::NUMBER);
+    auto num = std::static_pointer_cast<AST::Number>(node);
+    BOOST_CHECK(num);
+    BOOST_CHECK(num->value() == 123);
+  }
+
+  {
+    TokenList tokens{"-", "123"};
+    Parser parser{tokens};
+    auto node = parser.unary();
+    BOOST_CHECK(node->id() == AST::NodeType::UNARY_OP);
+    auto opBase = std::static_pointer_cast<AST::BaseUnaryOp>(node);
+    BOOST_CHECK(opBase);
+    BOOST_CHECK(opBase->opType() == AST::UnaryOpType::NEG);
+    auto op = std::static_pointer_cast<AST::UnaryOp<AST::UnaryOpType::NEG>>(opBase);
+    BOOST_CHECK(op);
+    auto& baseOperand = op->operand();
+    BOOST_CHECK(baseOperand.id() == AST::NodeType::NUMBER);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(parser_test_multiplication) {
+  { // Simplest case
+    TokenList tokens{"20"};
+    Parser parser{tokens};
+    auto node = parser.multiplication();
+    BOOST_CHECK(node->id() == AST::NodeType::NUMBER);
+  }
+
+  { // Times, where both children are numbers
+    TokenList tokens{"20", "*", "123"};
+    Parser parser{tokens};
+    auto node = parser.multiplication();
+    BOOST_CHECK(node->id() == AST::NodeType::BINARY_OP);
+    auto op = std::dynamic_pointer_cast<AST::BaseBinaryOp>(node);
+    BOOST_CHECK(op);
+    BOOST_CHECK(op->opType() == AST::BinaryOpType::MULT);
+    auto multOp = std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::MULT>>(node);
+    BOOST_CHECK(multOp);
+    BOOST_CHECK(multOp->left().id() == AST::NodeType::NUMBER);
+    BOOST_CHECK(multOp->right().id() == AST::NodeType::NUMBER);
+  }
+
+  { // Division, where both children are numbers
+    TokenList tokens{"200", "/", "20"};
+    Parser parser{tokens};
+    auto node = parser.multiplication();
+    BOOST_CHECK(node->id() == AST::NodeType::BINARY_OP);
+    auto op = std::dynamic_pointer_cast<AST::BaseBinaryOp>(node);
+    BOOST_CHECK(op);
+    BOOST_CHECK(op->opType() == AST::BinaryOpType::DIV);
+    auto divOp = std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::DIV>>(node);
+    BOOST_CHECK(divOp);
+    BOOST_CHECK(divOp->left().id() == AST::NodeType::NUMBER);
+    BOOST_CHECK(divOp->right().id() == AST::NodeType::NUMBER);
+  }
+
+  { // Left child is a unary and the right child is a multiplication
+    TokenList tokens{"-", "20", "/", "10", "*", "6"};
+    Parser parser{tokens};
+    auto node = parser.multiplication();
+    BOOST_CHECK(node->id() == AST::NodeType::BINARY_OP);
+    auto op = std::dynamic_pointer_cast<AST::BaseBinaryOp>(node);
+    BOOST_CHECK(op);
+    BOOST_CHECK(op->opType() == AST::BinaryOpType::MULT);
+    auto multOp = std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::MULT>>(node);
+    BOOST_CHECK(multOp);
+    BOOST_CHECK(multOp->left().id() == AST::NodeType::BINARY_OP);
+    BOOST_CHECK(multOp->right().id() == AST::NodeType::NUMBER);
+  }
+
+  { // Right child is a multiplication and the right child is a unary
+    TokenList tokens{"20", "*", "10", "*", "-", "6"};
+    Parser parser{tokens};
+    auto node = parser.multiplication();
+    BOOST_CHECK(node->id() == AST::NodeType::BINARY_OP);
+    auto op = std::dynamic_pointer_cast<AST::BaseBinaryOp>(node);
+    BOOST_CHECK(op);
+    BOOST_CHECK(op->opType() == AST::BinaryOpType::MULT);
+    auto multOp = std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::MULT>>(node);
+    BOOST_CHECK(multOp);
+    BOOST_CHECK(multOp->left().id() == AST::NodeType::BINARY_OP);
+    BOOST_CHECK(multOp->right().id() == AST::NodeType::UNARY_OP);
+    auto& leftBaseOp = dynamic_cast<AST::BaseBinaryOp&>(multOp->left());
+    BOOST_CHECK(leftBaseOp.opType() == AST::BinaryOpType::MULT);
+    auto& leftOp = dynamic_cast<AST::BinaryOp<AST::BinaryOpType::MULT>&>(leftBaseOp);
+    BOOST_CHECK(leftOp.right().id() == AST::NodeType::NUMBER);
+  }
 
 }
 
-#if 0
-BOOST_AUTO_TEST_CASE(parser_test_parseNumericOp) {
-  Parser parser{};
+BOOST_AUTO_TEST_CASE(parser_test_addition) {
 
   { // Both children are numbers
-    auto lnode = std::make_shared<AST::Number>(123);
-    auto rnode = std::make_shared<AST::Number>(112);
-    auto node = parser.parseNumericOp(lnode, "+", rnode);
-    BOOST_CHECK(node->id() == AST::NodeType::NUMERIC_OP);
-    auto op = std::dynamic_pointer_cast<AST::BaseNumericOp>(node);
+    TokenList tokens{"123", "+", "112"};
+    Parser parser{tokens};
+    auto node = parser.addition();
+    BOOST_CHECK(node->id() == AST::NodeType::BINARY_OP);
+    auto op = std::dynamic_pointer_cast<AST::BaseBinaryOp>(node);
     BOOST_CHECK(op);
-    BOOST_CHECK(op->opType() == AST::BinaryOp::ADD);
-    auto addOp = std::dynamic_pointer_cast<AST::NumericOp<AST::BinaryOp::ADD>>(node);
+    BOOST_CHECK(op->opType() == AST::BinaryOpType::ADD);
+    auto addOp = std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::ADD>>(node);
     BOOST_CHECK(addOp);
     BOOST_CHECK(addOp->left().id() == AST::NodeType::NUMBER);
     BOOST_CHECK(addOp->right().id() == AST::NodeType::NUMBER);
   }
 
-  { // Left child is number, right child is another NumericOp
-    auto lnode = std::make_shared<AST::Number>(123);
-    auto rnode = std::make_shared<AST::NumericOp<AST::BinaryOp::SUB>>(std::make_shared<AST::Number>(200),
-                                                                      std::make_shared<AST::Number>(20));
-    auto node = parser.parseNumericOp(lnode, "-", rnode);
-    BOOST_CHECK(node->id() == AST::NodeType::NUMERIC_OP);
-    auto op = std::dynamic_pointer_cast<AST::BaseNumericOp>(node);
+  { // Left child is number, right child is another BinaryOp
+    TokenList tokens{"123", "-", "200", "-", "20"};
+    Parser parser{tokens};
+    auto node = parser.addition();
+    BOOST_CHECK(node->id() == AST::NodeType::BINARY_OP);
+    auto op = std::dynamic_pointer_cast<AST::BaseBinaryOp>(node);
     BOOST_CHECK(op);
-    BOOST_CHECK(op->opType() == AST::BinaryOp::SUB);
-    auto subOp = std::dynamic_pointer_cast<AST::NumericOp<AST::BinaryOp::SUB>>(node);
+    BOOST_CHECK(op->opType() == AST::BinaryOpType::SUB);
+    auto subOp = std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::SUB>>(node);
     BOOST_CHECK(subOp);
-    BOOST_CHECK(subOp->left().id() == AST::NodeType::NUMBER);
-    BOOST_CHECK(subOp->right().id() == AST::NodeType::NUMERIC_OP);
-  }
-
-  { // Left child is a NumericOp, right child is a number
-    auto lnode = std::make_shared<AST::NumericOp<AST::BinaryOp::SUB>>(std::make_shared<AST::Number>(200),
-                                                                      std::make_shared<AST::Number>(20));
-    auto rnode = std::make_shared<AST::Number>(123);
-    auto node = parser.parseNumericOp(lnode, "*", rnode);
-    BOOST_CHECK(node->id() == AST::NodeType::NUMERIC_OP);
-    auto op = std::dynamic_pointer_cast<AST::BaseNumericOp>(node);
-    BOOST_CHECK(op);
-    BOOST_CHECK(op->opType() == AST::BinaryOp::MULT);
-    auto multOp = std::dynamic_pointer_cast<AST::NumericOp<AST::BinaryOp::MULT>>(node);
-    BOOST_CHECK(multOp);
-    BOOST_CHECK(multOp->left().id() == AST::NodeType::NUMERIC_OP);
-    BOOST_CHECK(multOp->right().id() == AST::NodeType::NUMBER);
-  }
-
-  { // Both children are NumericOps
-    auto lnode = std::make_shared<AST::NumericOp<AST::BinaryOp::SUB>>(std::make_shared<AST::Number>(200),
-                                                                      std::make_shared<AST::Number>(20));
-    auto rnode = std::make_shared<AST::NumericOp<AST::BinaryOp::SUB>>(std::make_shared<AST::Number>(200),
-                                                                      std::make_shared<AST::Number>(20));
-    auto node = parser.parseNumericOp(lnode, "/", rnode);
-    BOOST_CHECK(node->id() == AST::NodeType::NUMERIC_OP);
-    auto op = std::dynamic_pointer_cast<AST::BaseNumericOp>(node);
-    BOOST_CHECK(op);
-    BOOST_CHECK(op->opType() == AST::BinaryOp::DIV);
-    auto divOp = std::dynamic_pointer_cast<AST::NumericOp<AST::BinaryOp::DIV>>(node);
-    BOOST_CHECK(divOp);
-    BOOST_CHECK(divOp->left().id() == AST::NodeType::NUMERIC_OP);
-    BOOST_CHECK(divOp->right().id() == AST::NodeType::NUMERIC_OP);
+    BOOST_CHECK(subOp->left().id() == AST::NodeType::BINARY_OP);
+    BOOST_CHECK(subOp->right().id() == AST::NodeType::NUMBER);
   }
 }
 
+#if 0
 BOOST_AUTO_TEST_CASE(parser_test_parseInstruction) {
   Parser parser{};
 

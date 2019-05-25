@@ -1,0 +1,21 @@
+# Untested assembler directives
+  - `.comm`
+  - `.def`
+  - `.desc`
+  - `.eject`
+  - `.else`, `.elseif`, `.endif`
+  - `.end`
+  - `.endef`
+  - `.endfunc`
+  - `.exitm`
+  - `.extern`
+  - `.dim`
+  - `.macro`
+  - `.stabd`, `.stabn`, `.stabs`
+  - `.struct`
+  - `.tag`
+  - `.type`
+  - `.val`
+  - `.version`
+  - `.vtable_entry`, `.vtable_inherit`
+  - `.weak`, `.weakref`
