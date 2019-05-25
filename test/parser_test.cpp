@@ -355,6 +355,109 @@ BOOST_AUTO_TEST_CASE(parser_test_unary) {
   }
 }
 
+BOOST_AUTO_TEST_CASE(parser_test_label) {
+
+  {
+    TokenList tokens{"1asdf"};
+    Parser parser{tokens};
+    BOOST_CHECK_THROW(parser.label(), ParserException);
+  }
+
+  {
+    TokenList tokens{""};
+    Parser parser{tokens};
+    BOOST_CHECK_THROW(parser.label(), ParserException);
+  }
+
+  {
+    TokenList tokens{" "};
+    Parser parser{tokens};
+    BOOST_CHECK_THROW(parser.label(), ParserException);
+  }
+
+  {
+    TokenList tokens{"asdf-1"};
+    Parser parser{tokens};
+    BOOST_CHECK_THROW(parser.label(), ParserException);
+  }
+
+  {
+    TokenList tokens{"a@"};
+    Parser parser{tokens};
+    BOOST_CHECK_THROW(parser.label(), ParserException);
+  }
+
+  {
+    TokenList tokens{"a:"};
+    Parser parser{tokens};
+    BOOST_CHECK_THROW(parser.label(), ParserException);
+  }
+
+  {
+    TokenList tokens{"asdf12aa23"};
+    Parser parser{tokens};
+    auto node = parser.label();
+    BOOST_CHECK(node->id() == AST::NodeType::LABEL);
+    auto label = std::dynamic_pointer_cast<AST::Label>(node);
+    BOOST_CHECK(label);
+    BOOST_CHECK(label->name() == "asdf12aa23");
+  }
+
+}
+
+BOOST_AUTO_TEST_CASE(parser_test_operand) {
+
+  {
+    TokenList tokens{""};
+    Parser parser{tokens};
+    BOOST_CHECK_THROW(parser.operand(), ParserException);
+  }
+
+  { // Can't start with an operand
+    TokenList tokens{"halt"};
+    Parser parser{tokens};
+    BOOST_CHECK_THROW(parser.operand(), ParserException);
+  }
+
+  { // Instructions are not valid labels
+    TokenList tokens{"+"};
+    Parser parser{tokens};
+    BOOST_CHECK_THROW(parser.operand(), ParserException);
+  }
+
+  { // Labels are valid operands
+    TokenList tokens{"asdf12aa23"};
+    Parser parser{tokens};
+    auto node = parser.operand();
+    BOOST_CHECK(node->id() == AST::NodeType::LABEL);
+    auto label = std::dynamic_pointer_cast<AST::Label>(node);
+    BOOST_CHECK(label);
+    BOOST_CHECK(label->name() == "asdf12aa23");
+  }
+
+  { // Numbers are valid operands
+    TokenList tokens{"123"};
+    Parser parser{tokens};
+    auto node = parser.operand();
+    BOOST_CHECK(node->id() == AST::NodeType::NUMBER);
+    auto num = std::dynamic_pointer_cast<AST::Number>(node);
+    BOOST_CHECK(num);
+    BOOST_CHECK(num->value() == 123);
+  }
+
+  { // Registers are valid operands
+    TokenList tokens{"d"};
+    Parser parser{tokens};
+    auto node = parser.operand();
+    BOOST_CHECK(node->id() == AST::NodeType::REGISTER);
+    auto regBase = std::dynamic_pointer_cast<AST::RegisterBase>(node);
+    BOOST_CHECK(regBase);
+    BOOST_CHECK(regBase->reg() == 'd');
+    auto reg = std::dynamic_pointer_cast<AST::Register<'d'>>(node);
+    BOOST_CHECK(reg);
+  }
+}
+
 BOOST_AUTO_TEST_CASE(parser_test_multiplication) {
   { // Simplest case
     TokenList tokens{"20"};
@@ -567,61 +670,6 @@ BOOST_AUTO_TEST_CASE(parser_test_parseInstruction) {
   }
 }
 
-BOOST_AUTO_TEST_CASE(parser_test_parseLabel) {
-  Parser parser{};
-
-  BOOST_CHECK_THROW(parser.parseLabel("1asdf"), ParserException);
-  BOOST_CHECK_THROW(parser.parseLabel(""), ParserException);
-  BOOST_CHECK_THROW(parser.parseLabel(" "), ParserException);
-  BOOST_CHECK_THROW(parser.parseLabel("asdf-1"), ParserException);
-  BOOST_CHECK_THROW(parser.parseLabel("a@"), ParserException);
-  BOOST_CHECK_THROW(parser.parseLabel("a:"), ParserException);
-
-  {
-    auto node = parser.parseLabel("asdf12aa23");
-    BOOST_CHECK(node->id() == AST::NodeType::LABEL);
-    auto label = std::dynamic_pointer_cast<AST::Label>(node);
-    BOOST_CHECK(label);
-    BOOST_CHECK(label->name() == "asdf12aa23");
-  }
-
-}
-
-BOOST_AUTO_TEST_CASE(parser_test_parseOperand) {
-  Parser parser{};
-
-  BOOST_CHECK_THROW(parser.parseOperand(""), ParserException);
-  // Instructions are not valid labels
-  BOOST_CHECK_THROW(parser.parseOperand("halt"), ParserException);
-  // Can't start with an operand
-  BOOST_CHECK_THROW(parser.parseOperand("+"), ParserException);
-
-  { // Labels are valid operands
-    auto node = parser.parseOperand("asdf12aa23");
-    BOOST_CHECK(node->id() == AST::NodeType::LABEL);
-    auto label = std::dynamic_pointer_cast<AST::Label>(node);
-    BOOST_CHECK(label);
-    BOOST_CHECK(label->name() == "asdf12aa23");
-  }
-
-  { // Numbers are valid operands
-    auto node = parser.parseOperand("123");
-    BOOST_CHECK(node->id() == AST::NodeType::NUMBER);
-    auto num = std::dynamic_pointer_cast<AST::Number>(node);
-    BOOST_CHECK(num);
-    BOOST_CHECK(num->value() == 123);
-  }
-
-  { // Registers are valid operands
-    auto node = parser.parseOperand("d");
-    BOOST_CHECK(node->id() == AST::NodeType::REGISTER);
-    auto regBase = std::dynamic_pointer_cast<AST::RegisterBase>(node);
-    BOOST_CHECK(regBase);
-    BOOST_CHECK(regBase->reg() == 'd');
-    auto reg = std::dynamic_pointer_cast<AST::Register<'d'>>(node);
-    BOOST_CHECK(reg);
-  }
-}
 #endif
 
 BOOST_AUTO_TEST_SUITE_END();

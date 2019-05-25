@@ -133,7 +133,12 @@ std::shared_ptr<BaseNode> Parser::line() {
 }
 
 std::shared_ptr<BaseNode> Parser::label() {
-  return std::make_shared<Label>(next());
+  auto tok = next();
+  if (isLabel(tok)) {
+    return std::make_shared<Label>(tok);
+  } else {
+    throw ParserException("Invalid label");
+  }
 }
 
 std::shared_ptr<BaseNode> Parser::instruction() {
@@ -229,7 +234,7 @@ std::shared_ptr<BaseNode> Parser::addition() {
 }
 
 bool Parser::isAddition(const Token& tok) {
-  return (tok == "+") || (tok == "-");
+  return (tok.size() > 0) && ((tok == "+") || (tok == "-"));
 }
 
 std::shared_ptr<BaseNode> Parser::multiplication() {
@@ -249,10 +254,13 @@ std::shared_ptr<BaseNode> Parser::multiplication() {
 }
 
 bool Parser::isMultiplication(const Token& tok) {
-  return (tok == "*") || (tok == "/");
+  return (tok.size() > 0) && ((tok == "*") || (tok == "/"));
 }
 
 std::shared_ptr<BaseNode> Parser::unary() {
+  if (peek().size() < 1) {
+    throw ParserException("Invalid unary op");
+  }
   switch (peek().at(0)) {
     case '-':
       next();
