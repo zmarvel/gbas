@@ -25,7 +25,7 @@ pipeline {
         }
         stage('Test Clang') {
             steps {
-                sh 'make CHECK_OPTIONS="--log_format=JUNIT --log_level=all" CHECK_LOG=test_log_clang.xml check'
+                sh 'make CXX=clang++ CHECK_OPTIONS="--log_format=JUNIT --log_level=all" CHECK_LOG=test_log_clang.xml check'
             }
         }
     }
