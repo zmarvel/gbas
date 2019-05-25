@@ -17,6 +17,7 @@ INC = -Iinclude
 
 TEST_SRCS = test/tokenizer_test.cpp \
 	    test/parser_test.cpp \
+	    test/assembler_test.cpp \
 
 TEST_OBJS = $(patsubst %.cpp,%.o,$(TEST_SRCS))
 
@@ -38,7 +39,7 @@ $(TEST_EXE): $(OBJS) $(TEST_OBJS)
 
 .PHONY: check
 check: $(TEST_EXE)
-	./$<
+	./$< $(CHECK_OPTIONS)
 
 %.o: %.cpp Makefile
 	$(CXX) -MD -c $(CXXFLAGS) $(INC) -o $@ $<
