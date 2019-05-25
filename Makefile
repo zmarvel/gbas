@@ -11,7 +11,8 @@ SRCS = src/tokenizer.cpp \
 
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(OBJS:.o=.d)
-COVS = $(SRCS:.cpp=.gcno)
+COVS = $(SRCS:.cpp=.gcda) \
+    $(SRCS:.cpp=.gcno)
 EXE_OBJS = $(OBJS) $(EXE_SRC:.cpp=.o)
 INC = -Iinclude
 
