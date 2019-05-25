@@ -1,7 +1,7 @@
 
 #include <algorithm>
 
-#include "parser.h"
+#include "parser.hpp"
 
 Parser::Parser(TokenList& tokens) :
   mTokens{tokens},

@@ -1,7 +1,7 @@
 
 
 #include <fstream>
-#include "tokenizer.h"
+#include "tokenizer.hpp"
 
 class InputFile {
   public:

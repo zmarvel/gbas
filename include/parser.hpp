@@ -5,7 +5,7 @@
 #include <iostream>
 #include <memory>
 
-#include "tokenizer.h"
+#include "tokenizer.hpp"
 
 namespace AST {
 

@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <string>
 
-#include "tokenizer.h"
+#include "tokenizer.hpp"
 
 const std::array<Token, 2> Tokenizer::reserved = {
   "EOL",
