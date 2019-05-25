@@ -111,9 +111,8 @@ std::shared_ptr<BaseInstruction> Assembler::evaluateInstruction(std::shared_ptr<
       {
         auto instr1 = std::dynamic_pointer_cast<Instruction1>(node);
         if (instr1) {
-          auto pOperand = std::shared_ptr<BaseNode>(&(instr1->operand()));
           return std::make_shared<Instruction1>(instr1->type(),
-                                                evaluate(pOperand));
+                                                evaluate(instr1->operand()));
         } else {
           throw AssemblerException("Invalid AST Instruction1 node");
         }
@@ -123,11 +122,9 @@ std::shared_ptr<BaseInstruction> Assembler::evaluateInstruction(std::shared_ptr<
       {
         auto instr2 = std::dynamic_pointer_cast<Instruction2>(node);
         if (instr2) {
-          auto pLoperand = std::shared_ptr<BaseNode>(&(instr2->loperand()));
-          auto pRoperand = std::shared_ptr<BaseNode>(&(instr2->roperand()));
           return std::make_shared<Instruction2>(instr2->type(),
-                                                evaluate(pLoperand),
-                                                evaluate(pRoperand));
+                                                evaluate(instr2->left()),
+                                                evaluate(instr2->right()));
         } else {
           throw AssemblerException("Invalid AST Instruction2 node");
         }
@@ -144,10 +141,8 @@ std::shared_ptr<BaseNode> Assembler::evaluateBinaryOp(std::shared_ptr<BaseBinary
       {
         auto op = std::dynamic_pointer_cast<AddOp>(node);
         if (node) {
-          auto pLeft = std::shared_ptr<BaseNode>(&op->left());
-          auto pRight = std::shared_ptr<BaseNode>(&op->right());
-          auto vLeft = evaluate(pLeft);
-          auto vRight = evaluate(pRight);
+          auto vLeft = evaluate(op->left());
+          auto vRight = evaluate(op->right());
           if (vLeft->id() == NodeType::NUMBER &&
               vRight->id() == NodeType::NUMBER) {
             auto lnum = std::dynamic_pointer_cast<Number>(vLeft);
@@ -170,10 +165,8 @@ std::shared_ptr<BaseNode> Assembler::evaluateBinaryOp(std::shared_ptr<BaseBinary
       {
         auto op = std::dynamic_pointer_cast<SubOp>(node);
         if (node) {
-          auto pLeft = std::shared_ptr<BaseNode>(&op->left());
-          auto pRight = std::shared_ptr<BaseNode>(&op->right());
-          auto vLeft = evaluate(pLeft);
-          auto vRight = evaluate(pRight);
+          auto vLeft = evaluate(op->left());
+          auto vRight = evaluate(op->right());
           if (vLeft->id() == NodeType::NUMBER &&
               vRight->id() == NodeType::NUMBER) {
             auto lnum = std::dynamic_pointer_cast<Number>(vLeft);
@@ -196,10 +189,8 @@ std::shared_ptr<BaseNode> Assembler::evaluateBinaryOp(std::shared_ptr<BaseBinary
       {
         auto op = std::dynamic_pointer_cast<MultOp>(node);
         if (node) {
-          auto pLeft = std::shared_ptr<BaseNode>(&op->left());
-          auto pRight = std::shared_ptr<BaseNode>(&op->right());
-          auto vLeft = evaluate(pLeft);
-          auto vRight = evaluate(pRight);
+          auto vLeft = evaluate(op->left());
+          auto vRight = evaluate(op->right());
           if (vLeft->id() == NodeType::NUMBER &&
               vRight->id() == NodeType::NUMBER) {
             auto lnum = std::dynamic_pointer_cast<Number>(vLeft);
@@ -222,10 +213,8 @@ std::shared_ptr<BaseNode> Assembler::evaluateBinaryOp(std::shared_ptr<BaseBinary
       {
         auto op = std::dynamic_pointer_cast<DivOp>(node);
         if (node) {
-          auto pLeft = std::shared_ptr<BaseNode>(&op->left());
-          auto pRight = std::shared_ptr<BaseNode>(&op->right());
-          auto vLeft = evaluate(pLeft);
-          auto vRight = evaluate(pRight);
+          auto vLeft = evaluate(op->left());
+          auto vRight = evaluate(op->right());
           if (vLeft->id() == NodeType::NUMBER &&
               vRight->id() == NodeType::NUMBER) {
             auto lnum = std::dynamic_pointer_cast<Number>(vLeft);
@@ -255,8 +244,7 @@ std::shared_ptr<BaseNode> Assembler::evaluateUnaryOp(std::shared_ptr<BaseUnaryOp
       {
         auto op = std::dynamic_pointer_cast<NegOp>(node);
         if (node) {
-          auto pRand = std::shared_ptr<BaseNode>(&op->operand());
-          auto vRand = evaluate(pRand);
+          auto vRand = evaluate(op->operand());
           if (vRand->id() == NodeType::NUMBER) {
             auto num = std::dynamic_pointer_cast<Number>(vRand);
             if (num) {

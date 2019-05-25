@@ -201,12 +201,12 @@ namespace AST {
         return BinaryOpType::INVALID;
       }
 
-      BaseNode& left() {
-        return *mL;
+      std::shared_ptr<BaseNode> left() {
+        return mL;
       }
 
-      BaseNode& right() {
-        return *mR;
+      std::shared_ptr<BaseNode> right() {
+        return mR;
       }
 
     protected:
@@ -248,8 +248,8 @@ namespace AST {
         return UnaryOpType::INVALID;
       }
 
-      BaseNode& operand() {
-        return *mRand;
+      std::shared_ptr<BaseNode> operand() {
+        return mRand;
       }
 
     protected:
@@ -318,8 +318,8 @@ namespace AST {
         mOperand{operand}
       { }
 
-      BaseNode& operand() {
-        return *mOperand;
+      std::shared_ptr<BaseNode> operand() {
+        return mOperand;
       }
 
     private:
@@ -328,19 +328,19 @@ namespace AST {
 
   class Instruction2 : public BaseInstruction {
     public:
-      Instruction2(InstructionType type, std::shared_ptr<BaseNode> loperand,
-                   std::shared_ptr<BaseNode> roperand) :
+      Instruction2(InstructionType type, std::shared_ptr<BaseNode> left,
+                   std::shared_ptr<BaseNode> right) :
         BaseInstruction{type, 2},
-        mLoperand{loperand},
-        mRoperand{roperand}
+        mLoperand{left},
+        mRoperand{right}
       { }
 
-      BaseNode& loperand() {
-        return *mLoperand;
+      std::shared_ptr<BaseNode> left() {
+        return mLoperand;
       }
 
-      BaseNode& roperand() {
-        return *mRoperand;
+      std::shared_ptr<BaseNode> right() {
+        return mRoperand;
       }
 
     private:

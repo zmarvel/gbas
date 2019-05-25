@@ -59,9 +59,7 @@ static bool isAstEqual(std::shared_ptr<AST::BaseNode> left,
               auto lInstr1 = std::dynamic_pointer_cast<AST::Instruction1>(lInstr);
               auto rInstr1 = std::dynamic_pointer_cast<AST::Instruction1>(rInstr);
               if (lInstr1 && rInstr1) {
-                auto lpOperand = std::shared_ptr<AST::BaseNode>(&lInstr1->operand());
-                auto rpOperand = std::shared_ptr<AST::BaseNode>(&rInstr1->operand());
-                if (!isAstEqual(lpOperand, rpOperand)) {
+                if (!isAstEqual(lInstr1->operand(), rInstr1->operand())) {
                   return false;
                 }
               } else {
@@ -74,12 +72,8 @@ static bool isAstEqual(std::shared_ptr<AST::BaseNode> left,
               auto lInstr2 = std::dynamic_pointer_cast<AST::Instruction2>(lInstr);
               auto rInstr2 = std::dynamic_pointer_cast<AST::Instruction2>(rInstr);
               if (lInstr2 && rInstr2) {
-                auto lpLoperand = std::shared_ptr<AST::BaseNode>(&lInstr2->loperand());
-                auto lpRoperand = std::shared_ptr<AST::BaseNode>(&lInstr2->roperand());
-                auto rpLoperand = std::shared_ptr<AST::BaseNode>(&rInstr2->loperand());
-                auto rpRoperand = std::shared_ptr<AST::BaseNode>(&rInstr2->roperand());
-                if (!isAstEqual(lpLoperand, rpLoperand) ||
-                    !isAstEqual(lpRoperand, rpRoperand)) {
+                if (!isAstEqual(lInstr2->left(), rInstr2->left()) ||
+                    !isAstEqual(lInstr2->right(), rInstr2->right())) {
                   return false;
                 }
               } else {
@@ -152,12 +146,25 @@ static bool isAstEqual(std::shared_ptr<AST::BaseNode> left,
           if (lop->opType() != rop->opType()) {
             return false;
           } else {
-            auto lpLeft = std::shared_ptr<AST::BaseNode>(&lop->left());
-            auto lpRight = std::shared_ptr<AST::BaseNode>(&lop->right());
-            auto rpLeft = std::shared_ptr<AST::BaseNode>(&rop->left());
-            auto rpRight = std::shared_ptr<AST::BaseNode>(&rop->right());
-            if (!isAstEqual(lpLeft, rpLeft) ||
-                !isAstEqual(lpRight, rpRight)) {
+            if (!isAstEqual(lop->left(), rop->left()) ||
+                !isAstEqual(lop->right(), rop->right())) {
+              return false;
+            }
+          }
+        } else {
+          return false;
+        }
+      }
+      break;
+    case AST::NodeType::UNARY_OP:
+      {
+        auto lop = std::dynamic_pointer_cast<AST::BaseUnaryOp>(left);
+        auto rop = std::dynamic_pointer_cast<AST::BaseUnaryOp>(right);
+        if (lop && rop) {
+          if (lop->opType() != rop->opType()) {
+            return false;
+          } else {
+            if (!isAstEqual(lop->operand(), rop->operand())) {
               return false;
             }
           }
@@ -182,6 +189,151 @@ BOOST_AUTO_TEST_SUITE(assembler_evaluation);
  */
 BOOST_AUTO_TEST_CASE(assembler_test_evaluate_basic) {
 
+  { // empty root evaluates to empty root
+    auto lroot = std::make_shared<AST::Root>();
+    auto rroot = Assembler::evaluate(lroot);
+    BOOST_CHECK(isAstEqual(lroot, rroot));
+  }
+
+  { // number evaluates to same number
+    auto lnum = std::make_shared<AST::Number>(42);
+    auto rnum = Assembler::evaluate(lnum);
+    BOOST_CHECK(isAstEqual(lnum, rnum));
+  }
+
+  { // label evaluates to same label
+    auto llabel = std::make_shared<AST::Label>("asdf_1234");
+    auto rlabel = Assembler::evaluate(llabel);
+    BOOST_CHECK(isAstEqual(llabel, rlabel));
+  }
+
+  { // register evaluates to same register
+    auto lreg = std::make_shared<AST::Register<'e'>>();
+    auto rreg = Assembler::evaluate(lreg);
+    BOOST_CHECK(isAstEqual(lreg, rreg));
+  }
+
+  { // dregister evaluates to same dregister
+    auto lreg = std::make_shared<AST::DRegister<'d', 'e'>>();
+    auto rreg = Assembler::evaluate(lreg);
+    BOOST_CHECK(isAstEqual(lreg, rreg));
+  }
+
+  { // invalid node throws exception
+    auto lnode = std::make_shared<AST::Node<AST::NodeType::INVALID>>();
+    BOOST_CHECK_THROW(Assembler::evaluate(lnode), AssemblerException);
+  }
+
 }
+
+BOOST_AUTO_TEST_CASE(assembler_test_evaluateUnaryOp) {
+
+  { // unary op on register cannot be evaluated
+    auto lrand = std::make_shared<AST::Register<'a'>>();
+    auto lnode = std::make_shared<AST::UnaryOp<AST::UnaryOpType::NEG>>(lrand);
+    auto rnode = Assembler::evaluateUnaryOp(lnode);
+    BOOST_CHECK(isAstEqual(lnode, rnode));
+  }
+
+  { // unary op on label cannot be evaluated (... right?) TODO
+    auto lrand = std::make_shared<AST::Label>("asdf");
+    auto lnode = std::make_shared<AST::UnaryOp<AST::UnaryOpType::NEG>>(lrand);
+    auto rnode = Assembler::evaluateUnaryOp(lnode);
+    BOOST_CHECK(isAstEqual(lnode, rnode));
+  }
+
+  { // unary op on number CAN be evaluated
+    auto lrand = std::make_shared<AST::Number>(42);
+    auto lnode = std::make_shared<AST::UnaryOp<AST::UnaryOpType::NEG>>(lrand);
+    auto rnode = Assembler::evaluateUnaryOp(lnode);
+    BOOST_CHECK(!isAstEqual(lnode, rnode));
+    BOOST_CHECK(rnode->id() == AST::NodeType::NUMBER);
+    auto rnum = std::dynamic_pointer_cast<AST::Number>(rnode);
+    BOOST_CHECK(rnum);
+    BOOST_CHECK(static_cast<int8_t>(rnum->value()) == -42);
+  }
+
+  { // invalid unary op raises exception
+    auto lrand = std::make_shared<AST::Number>(42);
+    auto lnode = std::make_shared<AST::UnaryOp<AST::UnaryOpType::INVALID>>(lrand);
+    BOOST_CHECK_THROW(Assembler::evaluateUnaryOp(lnode), AssemblerException);
+  }
+
+}
+
+BOOST_AUTO_TEST_CASE(assembler_test_evaluateBinaryOp) {
+
+  { // binary op on register cannot be evaluated
+    auto lleft = std::make_shared<AST::Register<'a'>>();
+    auto lright = std::make_shared<AST::Register<'b'>>();
+    auto lnode = std::make_shared<AST::BinaryOp<AST::BinaryOpType::MULT>>(lleft, lright);
+    auto rnode = Assembler::evaluateBinaryOp(lnode);
+    BOOST_CHECK(isAstEqual(lnode, rnode));
+  }
+
+  { // binary op on label cannot be evaluated TODO
+    auto lleft = std::make_shared<AST::Label>("asdf1");
+    auto lright = std::make_shared<AST::Label>("asdf2");
+    auto lnode = std::make_shared<AST::BinaryOp<AST::BinaryOpType::MULT>>(lleft, lright);
+    auto rnode = Assembler::evaluateBinaryOp(lnode);
+    BOOST_CHECK(isAstEqual(lnode, rnode));
+  }
+
+  { // binary op on label cannot be evaluated TODO
+    auto lleft = std::make_shared<AST::Number>(42);
+    auto lright = std::make_shared<AST::Label>("asdf2");
+    auto lnode = std::make_shared<AST::BinaryOp<AST::BinaryOpType::ADD>>(lleft, lright);
+    auto rnode = Assembler::evaluateBinaryOp(lnode);
+    BOOST_CHECK(isAstEqual(lnode, rnode));
+  }
+
+  { // binary op on numbers CAN be evaluated
+    auto lleft = std::make_shared<AST::Number>(21);
+    auto lright = std::make_shared<AST::Number>(2);
+    auto lnode = std::make_shared<AST::BinaryOp<AST::BinaryOpType::MULT>>(lleft, lright);
+    auto rnode = Assembler::evaluateBinaryOp(lnode);
+    BOOST_CHECK(!isAstEqual(lnode, rnode));
+    BOOST_CHECK(rnode->id() == AST::NodeType::NUMBER);
+    auto rnum = std::dynamic_pointer_cast<AST::Number>(rnode);
+    BOOST_CHECK(rnum->value() == 42);
+  }
+
+  { // binary op on numbers CAN be evaluated
+    auto lleft = std::make_shared<AST::Number>(40);
+    auto lright = std::make_shared<AST::Number>(2);
+    auto lnode = std::make_shared<AST::BinaryOp<AST::BinaryOpType::ADD>>(lleft, lright);
+    auto rnode = Assembler::evaluateBinaryOp(lnode);
+    BOOST_CHECK(!isAstEqual(lnode, rnode));
+    BOOST_CHECK(rnode->id() == AST::NodeType::NUMBER);
+    auto rnum = std::dynamic_pointer_cast<AST::Number>(rnode);
+    BOOST_CHECK(rnum->value() == 42);
+  }
+
+  { // binary op on numbers CAN be evaluated
+    auto lleft = std::make_shared<AST::Number>(50);
+    auto lright = std::make_shared<AST::Number>(8);
+    auto lnode = std::make_shared<AST::BinaryOp<AST::BinaryOpType::SUB>>(lleft, lright);
+    auto rnode = Assembler::evaluateBinaryOp(lnode);
+    BOOST_CHECK(!isAstEqual(lnode, rnode));
+    BOOST_CHECK(rnode->id() == AST::NodeType::NUMBER);
+    auto rnum = std::dynamic_pointer_cast<AST::Number>(rnode);
+    BOOST_CHECK(rnum->value() == 42);
+  }
+
+  { // binary op on numbers CAN be evaluated
+    auto lright = std::make_shared<AST::Number>(4);
+    auto llleft = std::make_shared<AST::Number>(92);
+    auto llright = std::make_shared<AST::Number>(2);
+    auto llnode = std::make_shared<AST::BinaryOp<AST::BinaryOpType::DIV>>(llleft, llright);
+    auto lnode = std::make_shared<AST::BinaryOp<AST::BinaryOpType::SUB>>(llnode, lright);
+    auto rnode = Assembler::evaluateBinaryOp(lnode);
+    BOOST_CHECK(!isAstEqual(lnode, rnode));
+    BOOST_CHECK(rnode->id() == AST::NodeType::NUMBER);
+    auto rnum = std::dynamic_pointer_cast<AST::Number>(rnode);
+    BOOST_CHECK(rnum->value() == 42);
+  }
+
+}
+
 
 BOOST_AUTO_TEST_SUITE_END();
