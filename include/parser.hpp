@@ -134,26 +134,26 @@ namespace AST {
   };
 
 
-  class RegisterBase : public Node<NodeType::REGISTER> {
+  class BaseRegister : public Node<NodeType::REGISTER> {
     public:
       virtual char reg() const = 0;
   };
 
   template<char regc>
-  struct Register : public RegisterBase {
+  struct Register : public BaseRegister {
     public:
       virtual char reg() const override {
         return regc;
       }
   };
 
-  class DRegisterBase : public Node<NodeType::DREGISTER> {
+  class BaseDRegister : public Node<NodeType::DREGISTER> {
     public:
       virtual std::string reg() const = 0;
   };
 
   template<char reg1, char reg2>
-  struct DRegister : public DRegisterBase {
+  struct DRegister : public BaseDRegister {
     virtual std::string reg() const override {
       return std::string{reg1, reg2};
     }
@@ -435,13 +435,13 @@ class Parser {
      * Convert tok to a Register node, or raise an exception if this is not
      * possible.
      */
-    std::shared_ptr<AST::RegisterBase> parseRegister(const Token& tok);
+    std::shared_ptr<AST::BaseRegister> parseRegister(const Token& tok);
     
     /**
      * Convert tok to a DRegister node, or raise an exception if this is not
      * possible.
      */
-    std::shared_ptr<AST::DRegisterBase> parseDRegister(const Token& tok);
+    std::shared_ptr<AST::BaseDRegister> parseDRegister(const Token& tok);
 
     /**
      * Convert tok to a Number node, or raise an exception if this is not

@@ -2,7 +2,7 @@
 #define BOOST_TEST_DYN_LINK
 #include <boost/test/unit_test.hpp>
 
-#include "parser.h"
+#include "parser.hpp"
 
 BOOST_AUTO_TEST_SUITE(parser_token_predicates);
 
@@ -164,7 +164,7 @@ BOOST_AUTO_TEST_CASE(parser_test_parseRegister) {
     Parser parser{tokens};
     auto node = parser.register_();
     BOOST_CHECK(node->id() == AST::NodeType::REGISTER);
-    auto reg = std::static_pointer_cast<AST::RegisterBase>(node);
+    auto reg = std::static_pointer_cast<AST::BaseRegister>(node);
     BOOST_CHECK_EQUAL(reg->reg(), 'a');
   }
 
@@ -173,7 +173,7 @@ BOOST_AUTO_TEST_CASE(parser_test_parseRegister) {
     Parser parser{tokens};
     auto node = parser.register_();
     BOOST_CHECK(node->id() == AST::NodeType::REGISTER);
-    auto reg = std::static_pointer_cast<AST::RegisterBase>(node);
+    auto reg = std::static_pointer_cast<AST::BaseRegister>(node);
     BOOST_CHECK_EQUAL(reg->reg(), 'f');
   }
 
@@ -182,7 +182,7 @@ BOOST_AUTO_TEST_CASE(parser_test_parseRegister) {
     Parser parser{tokens};
     auto node = parser.register_();
     BOOST_CHECK(node->id() == AST::NodeType::REGISTER);
-    auto reg = std::static_pointer_cast<AST::RegisterBase>(node);
+    auto reg = std::static_pointer_cast<AST::BaseRegister>(node);
     BOOST_CHECK_EQUAL(reg->reg(), 'b');
   }
 
@@ -191,7 +191,7 @@ BOOST_AUTO_TEST_CASE(parser_test_parseRegister) {
     Parser parser{tokens};
     auto node = parser.register_();
     BOOST_CHECK(node->id() == AST::NodeType::REGISTER);
-    auto reg = std::static_pointer_cast<AST::RegisterBase>(node);
+    auto reg = std::static_pointer_cast<AST::BaseRegister>(node);
     BOOST_CHECK_EQUAL(reg->reg(), 'c');
   }
 
@@ -200,7 +200,7 @@ BOOST_AUTO_TEST_CASE(parser_test_parseRegister) {
     Parser parser{tokens};
     auto node = parser.register_();
     BOOST_CHECK(node->id() == AST::NodeType::REGISTER);
-    auto reg = std::static_pointer_cast<AST::RegisterBase>(node);
+    auto reg = std::static_pointer_cast<AST::BaseRegister>(node);
     BOOST_CHECK_EQUAL(reg->reg(), 'd');
   }
 
@@ -209,7 +209,7 @@ BOOST_AUTO_TEST_CASE(parser_test_parseRegister) {
     Parser parser{tokens};
     auto node = parser.register_();
     BOOST_CHECK(node->id() == AST::NodeType::REGISTER);
-    auto reg = std::static_pointer_cast<AST::RegisterBase>(node);
+    auto reg = std::static_pointer_cast<AST::BaseRegister>(node);
     BOOST_CHECK_EQUAL(reg->reg(), 'e');
   }
 }
@@ -232,7 +232,7 @@ BOOST_AUTO_TEST_CASE(parser_test_dregister) {
     Parser parser{tokens};
     auto node = parser.dregister();
     BOOST_CHECK(node->id() == AST::NodeType::DREGISTER);
-    auto reg = std::static_pointer_cast<AST::DRegisterBase>(node);
+    auto reg = std::static_pointer_cast<AST::BaseDRegister>(node);
     BOOST_CHECK_EQUAL(reg->reg(), "af");
   }
 
@@ -241,7 +241,7 @@ BOOST_AUTO_TEST_CASE(parser_test_dregister) {
     Parser parser{tokens};
     auto node = parser.dregister();
     BOOST_CHECK(node->id() == AST::NodeType::DREGISTER);
-    auto reg = std::static_pointer_cast<AST::DRegisterBase>(node);
+    auto reg = std::static_pointer_cast<AST::BaseDRegister>(node);
     BOOST_CHECK_EQUAL(reg->reg(), "bc");
   }
 
@@ -250,7 +250,7 @@ BOOST_AUTO_TEST_CASE(parser_test_dregister) {
     Parser parser{tokens};
     auto node = parser.dregister();
     BOOST_CHECK(node->id() == AST::NodeType::DREGISTER);
-    auto reg = std::static_pointer_cast<AST::DRegisterBase>(node);
+    auto reg = std::static_pointer_cast<AST::BaseDRegister>(node);
     BOOST_CHECK_EQUAL(reg->reg(), "de");
   }
 
@@ -259,7 +259,7 @@ BOOST_AUTO_TEST_CASE(parser_test_dregister) {
     Parser parser{tokens};
     auto node = parser.dregister();
     BOOST_CHECK(node->id() == AST::NodeType::DREGISTER);
-    auto reg = std::static_pointer_cast<AST::DRegisterBase>(node);
+    auto reg = std::static_pointer_cast<AST::BaseDRegister>(node);
     BOOST_CHECK_EQUAL(reg->reg(), "hl");
   }
 
@@ -268,7 +268,7 @@ BOOST_AUTO_TEST_CASE(parser_test_dregister) {
     Parser parser{tokens};
     auto node = parser.dregister();
     BOOST_CHECK(node->id() == AST::NodeType::DREGISTER);
-    auto reg = std::static_pointer_cast<AST::DRegisterBase>(node);
+    auto reg = std::static_pointer_cast<AST::BaseDRegister>(node);
     BOOST_CHECK_EQUAL(reg->reg(), "sp");
   }
 
@@ -277,7 +277,7 @@ BOOST_AUTO_TEST_CASE(parser_test_dregister) {
     Parser parser{tokens};
     auto node = parser.dregister();
     BOOST_CHECK(node->id() == AST::NodeType::DREGISTER);
-    auto reg = std::static_pointer_cast<AST::DRegisterBase>(node);
+    auto reg = std::static_pointer_cast<AST::BaseDRegister>(node);
     BOOST_CHECK_EQUAL(reg->reg(), "pc");
   }
 }
@@ -450,7 +450,7 @@ BOOST_AUTO_TEST_CASE(parser_test_operand) {
     Parser parser{tokens};
     auto node = parser.operand();
     BOOST_CHECK(node->id() == AST::NodeType::REGISTER);
-    auto regBase = std::dynamic_pointer_cast<AST::RegisterBase>(node);
+    auto regBase = std::dynamic_pointer_cast<AST::BaseRegister>(node);
     BOOST_CHECK(regBase);
     BOOST_CHECK(regBase->reg() == 'd');
     auto reg = std::dynamic_pointer_cast<AST::Register<'d'>>(node);

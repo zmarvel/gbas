@@ -5,7 +5,7 @@
 #define BOOST_TEST_DYN_LINK
 #include <boost/test/unit_test.hpp>
 
-#include "tokenizer.h"
+#include "tokenizer.hpp"
 
 BOOST_AUTO_TEST_CASE(tokenizer_test_isReserved) {
   BOOST_TEST(Tokenizer::isReserved("add") == false);
