@@ -7,6 +7,7 @@ EXE = gbas
 TEST_EXE = gbas_test
 SRCS = src/tokenizer.cpp \
        src/parser.cpp \
+       src/assembler.cpp \
 
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(OBJS:.o=.d)
