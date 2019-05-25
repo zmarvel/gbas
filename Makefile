@@ -39,7 +39,11 @@ $(TEST_EXE): $(OBJS) $(TEST_OBJS)
 
 .PHONY: check
 check: $(TEST_EXE)
-	./$< $(CHECK_OPTIONS)
+ifdef CHECK_LOG
+	-./$< $(CHECK_OPTIONS) > $(CHECK_LOG)
+else
+	-./$< $(CHECK_OPTIONS) 
+endif
 
 %.o: %.cpp Makefile
 	$(CXX) -MD -c $(CXXFLAGS) $(INC) -o $@ $<
