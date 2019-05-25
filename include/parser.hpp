@@ -200,20 +200,6 @@ namespace AST {
       virtual BinaryOpType opType() const {
         return BinaryOpType::INVALID;
       }
-  };
-
-  template<BinaryOpType Top>
-  class BinaryOp : public BaseBinaryOp {
-    public:
-      explicit BinaryOp(std::shared_ptr<BaseNode> l,
-                        std::shared_ptr<BaseNode> r) :
-        mL{l}, mR{r}
-      {
-      }
-
-      virtual BinaryOpType opType() const {
-        return Top;
-      }
 
       BaseNode& left() {
         return *mL;
@@ -223,8 +209,27 @@ namespace AST {
         return *mR;
       }
 
+    protected:
+      explicit BaseBinaryOp(std::shared_ptr<BaseNode> l,
+                        std::shared_ptr<BaseNode> r) :
+        mL{l}, mR{r}
+      { }
+
     private:
       std::shared_ptr<BaseNode> mL, mR;
+  };
+
+  template<BinaryOpType Top>
+  class BinaryOp : public BaseBinaryOp {
+    public:
+      explicit BinaryOp(std::shared_ptr<BaseNode> l,
+                        std::shared_ptr<BaseNode> r) :
+        BaseBinaryOp{l, r}
+      { }
+
+      virtual BinaryOpType opType() const {
+        return Top;
+      }
   };
 
   using AddOp = BinaryOp<BinaryOpType::ADD>;
@@ -242,25 +247,31 @@ namespace AST {
       virtual UnaryOpType opType() const {
         return UnaryOpType::INVALID;
       }
+
+      BaseNode& operand() {
+        return *mRand;
+      }
+
+    protected:
+      explicit BaseUnaryOp(std::shared_ptr<BaseNode> rand) :
+        mRand{rand}
+      { }
+
+    private:
+      std::shared_ptr<BaseNode> mRand;
+
   };
 
   template<UnaryOpType Top>
   class UnaryOp : public BaseUnaryOp {
     public:
       explicit UnaryOp(std::shared_ptr<BaseNode> rand) :
-        mRand{rand}
+        BaseUnaryOp{rand}
       { }
 
       virtual UnaryOpType opType() const {
         return Top;
       }
-
-      BaseNode& operand() {
-        return *mRand;
-      }
-
-    private:
-      std::shared_ptr<BaseNode> mRand;
   };
 
   using NegOp = UnaryOp<UnaryOpType::NEG>;
