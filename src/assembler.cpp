@@ -5,9 +5,7 @@
 
 using namespace AST;
 
-std::shared_ptr<BaseNode>
-Assembler::evaluate(std::shared_ptr<BaseNode> node)
-{
+std::shared_ptr<BaseNode> Assembler::evaluate(std::shared_ptr<BaseNode> node) {
   switch (node->id()) {
     case NodeType::ROOT: {
       auto root = std::dynamic_pointer_cast<Root>(node);
@@ -54,9 +52,8 @@ Assembler::evaluate(std::shared_ptr<BaseNode> node)
   }
 }
 
-std::shared_ptr<BaseInstruction>
-Assembler::evaluateInstruction(std::shared_ptr<BaseInstruction> node)
-{
+std::shared_ptr<BaseInstruction> Assembler::evaluateInstruction(
+    std::shared_ptr<BaseInstruction> node) {
   switch (node->nOperands()) {
     case 0:
       return node;
@@ -69,16 +66,15 @@ Assembler::evaluateInstruction(std::shared_ptr<BaseInstruction> node)
     case 2: {
       auto instr2 = std::dynamic_pointer_cast<Instruction2>(node);
       return std::make_shared<Instruction2>(
-        instr2->type(), evaluate(instr2->left()), evaluate(instr2->right()));
+          instr2->type(), evaluate(instr2->left()), evaluate(instr2->right()));
     } break;
     default:
       throw AssemblerException("Invalid number of Instruction operands");
   }
 }
 
-std::shared_ptr<BaseNode>
-Assembler::evaluateBinaryOp(std::shared_ptr<BaseBinaryOp> node)
-{
+std::shared_ptr<BaseNode> Assembler::evaluateBinaryOp(
+    std::shared_ptr<BaseBinaryOp> node) {
   switch (node->opType()) {
     case BinaryOpType::ADD: {
       auto op = std::dynamic_pointer_cast<AddOp>(node);
@@ -137,9 +133,8 @@ Assembler::evaluateBinaryOp(std::shared_ptr<BaseBinaryOp> node)
   }
 }
 
-std::shared_ptr<BaseNode>
-Assembler::evaluateUnaryOp(std::shared_ptr<BaseUnaryOp> node)
-{
+std::shared_ptr<BaseNode> Assembler::evaluateUnaryOp(
+    std::shared_ptr<BaseUnaryOp> node) {
   switch (node->opType()) {
     case UnaryOpType::NEG: {
       auto op = std::dynamic_pointer_cast<NegOp>(node);

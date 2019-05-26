@@ -5,40 +5,29 @@
 #include "tokenizer.hpp"
 
 const std::array<Token, 2> Tokenizer::reserved = {
-  "EOL",
-  "EOF",
+    "EOL",
+    "EOF",
 };
 
-const std::array<char, 4> Tokenizer::operators = { '*', '/', '+', '-' };
+const std::array<char, 4> Tokenizer::operators = {'*', '/', '+', '-'};
 
-bool
-Tokenizer::isReserved(Token tok)
-{
+bool Tokenizer::isReserved(Token tok) {
   auto it = std::find(reserved.begin(), reserved.end(), tok);
   return it != reserved.end();
 }
 
-bool
-Tokenizer::isAlphaNumeric(char c)
-{
+bool Tokenizer::isAlphaNumeric(char c) {
   return ((c >= '0') && (c <= '9')) || ((c >= 'A') && (c <= 'Z')) ||
          ((c >= 'a') && (c <= 'z'));
 }
 
-bool
-Tokenizer::isOperator(char c)
-{
+bool Tokenizer::isOperator(char c) {
   auto it = std::find(operators.begin(), operators.end(), c);
   return it != operators.end();
 }
 
-void
-Tokenizer::logError(std::ostream& out,
-                    const std::string& msg,
-                    const std::string& line,
-                    int lineno,
-                    int col)
-{
+void Tokenizer::logError(std::ostream& out, const std::string& msg,
+                         const std::string& line, int lineno, int col) {
   out << "Line " << lineno << ": " << msg << std::endl;
   out << line << std::endl;
   std::string arrow(col + 1, '-');
@@ -46,9 +35,7 @@ Tokenizer::logError(std::ostream& out,
   out << arrow << std::endl;
 }
 
-TokenList*
-Tokenizer::tokenize(std::basic_istream<char>& lines)
-{
+TokenList* Tokenizer::tokenize(std::basic_istream<char>& lines) {
   TokenList* tokens = new TokenList{};
 
   int lineno = 0;
@@ -101,21 +88,15 @@ Tokenizer::tokenize(std::basic_istream<char>& lines)
             pos++;
             state = State::END_TOKEN;
           } else {
-            logError(std::cerr,
-                     "Invalid token",
-                     std::string{ line.data() },
-                     lineno,
-                     pos);
+            logError(std::cerr, "Invalid token", std::string{line.data()},
+                     lineno, pos);
             return nullptr;
           }
           break;
         case State::STRING_TOKEN:
           if (pos >= line.size()) {
-            logError(std::cerr,
-                     "Unterminated string",
-                     std::string{ line.data() },
-                     lineno,
-                     pos);
+            logError(std::cerr, "Unterminated string", std::string{line.data()},
+                     lineno, pos);
             return nullptr;
           } else if (curr == '"') {
             // string end
@@ -146,16 +127,13 @@ Tokenizer::tokenize(std::basic_istream<char>& lines)
             tokbuf.push_back(curr);
             pos++;
           } else {
-            logError(std::cerr,
-                     "Invalid token",
-                     std::string{ line.data() },
-                     lineno,
-                     pos);
+            logError(std::cerr, "Invalid token", std::string{line.data()},
+                     lineno, pos);
             return nullptr;
           }
           break;
         case State::END_TOKEN:
-          tokens->push_back(Token{ tokbuf });
+          tokens->push_back(Token{tokbuf});
           tokbuf.clear();
           state = State::START_TOKEN;
           break;

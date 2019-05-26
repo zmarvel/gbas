@@ -9,8 +9,7 @@
 
 namespace AST {
 
-enum class InstructionType
-{
+enum class InstructionType {
   ADD,
   ADC,
   INC,
@@ -72,8 +71,7 @@ enum class InstructionType
  * - Node<NumericOp<op, T>>
  */
 
-enum class NodeType
-{
+enum class NodeType {
   ROOT,
   INSTRUCTION,
   REGISTER,
@@ -85,100 +83,80 @@ enum class NodeType
   INVALID,
 };
 
-struct BaseNode
-{
+struct BaseNode {
   virtual NodeType id() const { return NodeType::INVALID; };
 };
 
-template<NodeType Tnode>
-struct Node : BaseNode
-{
+template <NodeType Tnode>
+struct Node : BaseNode {
   virtual NodeType id() const override { return Tnode; }
 };
 
-class Root : public Node<NodeType::ROOT>
-{
-public:
-  Root()
-    : mChildren{}
-  {}
+class Root : public Node<NodeType::ROOT> {
+ public:
+  Root() : mChildren{} {}
 
-  Root(std::vector<std::shared_ptr<BaseNode>> children)
-    : mChildren{ children }
-  {}
+  Root(std::vector<std::shared_ptr<BaseNode>> children) : mChildren{children} {}
 
   void add(std::shared_ptr<BaseNode> child) { mChildren.push_back(child); }
 
   BaseNode& child(size_t i) { return *mChildren.at(i); }
 
-  std::vector<std::shared_ptr<BaseNode>>::iterator begin()
-  {
+  std::vector<std::shared_ptr<BaseNode>>::iterator begin() {
     return mChildren.begin();
   }
 
-  std::vector<std::shared_ptr<BaseNode>>::iterator end()
-  {
+  std::vector<std::shared_ptr<BaseNode>>::iterator end() {
     return mChildren.end();
   }
 
   size_t size() const { return mChildren.size(); }
 
-private:
+ private:
   std::vector<std::shared_ptr<BaseNode>> mChildren;
 };
 
-class BaseRegister : public Node<NodeType::REGISTER>
-{
-public:
+class BaseRegister : public Node<NodeType::REGISTER> {
+ public:
   virtual char reg() const = 0;
 };
 
-template<char regc>
-struct Register : public BaseRegister
-{
-public:
+template <char regc>
+struct Register : public BaseRegister {
+ public:
   virtual char reg() const override { return regc; }
 };
 
-class BaseDRegister : public Node<NodeType::DREGISTER>
-{
-public:
+class BaseDRegister : public Node<NodeType::DREGISTER> {
+ public:
   virtual std::string reg() const = 0;
 };
 
-template<char reg1, char reg2>
-struct DRegister : public BaseDRegister
-{
-  virtual std::string reg() const override { return std::string{ reg1, reg2 }; }
+template <char reg1, char reg2>
+struct DRegister : public BaseDRegister {
+  virtual std::string reg() const override { return std::string{reg1, reg2}; }
 };
 
-class Label : public Node<NodeType::LABEL>
-{
-public:
-  Label(const std::string& name)
-    : mName{ name }
-  {}
+class Label : public Node<NodeType::LABEL> {
+ public:
+  Label(const std::string& name) : mName{name} {}
 
   const std::string& name() const { return mName; }
 
-private:
+ private:
   std::string mName;
 };
 
-struct Number : public Node<NodeType::NUMBER>
-{
-  explicit Number(uint8_t value)
-    : mValue{ value }
-  {}
+struct Number : public Node<NodeType::NUMBER> {
+  explicit Number(uint8_t value) : mValue{value} {}
 
   uint8_t value() const { return mValue; }
 
-private:
+ private:
   uint8_t mValue;
 };
 
-enum class BinaryOpType
-{
+enum class BinaryOpType {
   ADD,
   SUB,
   MULT,
@@ -186,33 +164,28 @@ enum class BinaryOpType
   INVALID,
 };
 
-class BaseBinaryOp : public Node<NodeType::BINARY_OP>
-{
-public:
+class BaseBinaryOp : public Node<NodeType::BINARY_OP> {
+ public:
   virtual BinaryOpType opType() const { return BinaryOpType::INVALID; }
 
   std::shared_ptr<BaseNode> left() { return mL; }
 
   std::shared_ptr<BaseNode> right() { return mR; }
 
-protected:
+ protected:
   explicit BaseBinaryOp(std::shared_ptr<BaseNode> l,
                         std::shared_ptr<BaseNode> r)
-    : mL{ l }
-    , mR{ r }
-  {}
+      : mL{l}, mR{r} {}
 
-private:
+ private:
   std::shared_ptr<BaseNode> mL, mR;
 };
 
-template<BinaryOpType Top>
-class BinaryOp : public BaseBinaryOp
-{
-public:
+template <BinaryOpType Top>
+class BinaryOp : public BaseBinaryOp {
+ public:
   explicit BinaryOp(std::shared_ptr<BaseNode> l, std::shared_ptr<BaseNode> r)
-    : BaseBinaryOp{ l, r }
-  {}
+      : BaseBinaryOp{l, r} {}
 
   virtual BinaryOpType opType() const { return Top; }
 };
@@ -222,119 +195,92 @@ using SubOp = BinaryOp<BinaryOpType::SUB>;
 using MultOp = BinaryOp<BinaryOpType::MULT>;
 using DivOp = BinaryOp<BinaryOpType::DIV>;
 
-enum class UnaryOpType
-{
+enum class UnaryOpType {
   NEG,
   INVALID,
 };
 
-class BaseUnaryOp : public Node<NodeType::UNARY_OP>
-{
-public:
+class BaseUnaryOp : public Node<NodeType::UNARY_OP> {
+ public:
   virtual UnaryOpType opType() const { return UnaryOpType::INVALID; }
 
   std::shared_ptr<BaseNode> operand() { return mRand; }
 
-protected:
-  explicit BaseUnaryOp(std::shared_ptr<BaseNode> rand)
-    : mRand{ rand }
-  {}
+ protected:
+  explicit BaseUnaryOp(std::shared_ptr<BaseNode> rand) : mRand{rand} {}
 
-private:
+ private:
   std::shared_ptr<BaseNode> mRand;
 };
 
-template<UnaryOpType Top>
-class UnaryOp : public BaseUnaryOp
-{
-public:
-  explicit UnaryOp(std::shared_ptr<BaseNode> rand)
-    : BaseUnaryOp{ rand }
-  {}
+template <UnaryOpType Top>
+class UnaryOp : public BaseUnaryOp {
+ public:
+  explicit UnaryOp(std::shared_ptr<BaseNode> rand) : BaseUnaryOp{rand} {}
 
   virtual UnaryOpType opType() const { return Top; }
 };
 
 using NegOp = UnaryOp<UnaryOpType::NEG>;
 
-class BaseInstruction : public Node<NodeType::INSTRUCTION>
-{
-public:
+class BaseInstruction : public Node<NodeType::INSTRUCTION> {
+ public:
   InstructionType type() const { return mType; }
 
   virtual int nOperands() const = 0;
 
-protected:
-  BaseInstruction()
-    : mType{ InstructionType::INVALID }
-  {}
+ protected:
+  BaseInstruction() : mType{InstructionType::INVALID} {}
 
-  BaseInstruction(InstructionType type)
-    : mType{ type }
-  {}
+  BaseInstruction(InstructionType type) : mType{type} {}
 
   InstructionType mType;
 };
 
-template<int NOperands>
-class Instruction : public BaseInstruction
-{
-public:
+template <int NOperands>
+class Instruction : public BaseInstruction {
+ public:
   virtual int nOperands() const { return NOperands; }
 
-protected:
-  Instruction(InstructionType type)
-    : BaseInstruction{ type }
-  {}
+ protected:
+  Instruction(InstructionType type) : BaseInstruction{type} {}
 };
 
-class Instruction0 : public Instruction<0>
-{
-public:
-  Instruction0(InstructionType type)
-    : Instruction<0>{ type }
-  {}
+class Instruction0 : public Instruction<0> {
+ public:
+  Instruction0(InstructionType type) : Instruction<0>{type} {}
 };
 
-class Instruction1 : public Instruction<1>
-{
-public:
+class Instruction1 : public Instruction<1> {
+ public:
   Instruction1(InstructionType type, std::shared_ptr<BaseNode> operand)
-    : Instruction<1>{ type }
-    , mOperand{ operand }
-  {}
+      : Instruction<1>{type}, mOperand{operand} {}
 
   std::shared_ptr<BaseNode> operand() { return mOperand; }
 
-private:
+ private:
   std::shared_ptr<BaseNode> mOperand;
 };
 
-class Instruction2 : public Instruction<2>
-{
-public:
-  Instruction2(InstructionType type,
-               std::shared_ptr<BaseNode> left,
+class Instruction2 : public Instruction<2> {
+ public:
+  Instruction2(InstructionType type, std::shared_ptr<BaseNode> left,
                std::shared_ptr<BaseNode> right)
-    : Instruction<2>{ type }
-    , mLoperand{ left }
-    , mRoperand{ right }
-  {}
+      : Instruction<2>{type}, mLoperand{left}, mRoperand{right} {}
 
   std::shared_ptr<BaseNode> left() { return mLoperand; }
 
   std::shared_ptr<BaseNode> right() { return mRoperand; }
 
-private:
+ private:
   std::shared_ptr<BaseNode> mLoperand, mRoperand;
 };
 
 class Terminal;
 
-};
+};  // namespace AST
 
-struct InstructionProps
-{
+struct InstructionProps {
   const std::string lexeme;
   AST::InstructionType type;
   int args1;
@@ -342,7 +288,7 @@ struct InstructionProps
 };
 
 using InstructionPropsList =
-  const std::array<const InstructionProps, 22 + 5 + 5 + 5 + 7>;
+    const std::array<const InstructionProps, 22 + 5 + 5 + 5 + 7>;
 
 /*
  * program → line* EOF ;
@@ -368,10 +314,8 @@ using InstructionPropsList =
  * newline → "EOL"
  */
 
-class Parser
-{
-
-public:
+class Parser {
+ public:
   Parser(TokenList& tokens);
   ~Parser();
 
@@ -445,9 +389,8 @@ public:
    * operands.
    */
   std::shared_ptr<AST::BaseNode> parseNumericOp(
-    std::shared_ptr<AST::BaseNode> lrand,
-    const Token& tok,
-    std::shared_ptr<AST::BaseNode> rrand);
+      std::shared_ptr<AST::BaseNode> lrand, const Token& tok,
+      std::shared_ptr<AST::BaseNode> rrand);
 
   /**
    * Convert tok to an Instruction0. If this is not possible, raise an
@@ -460,16 +403,14 @@ public:
    * not possible, raise an exception.
    */
   std::shared_ptr<AST::BaseNode> parseInstruction(
-    const Token& tok,
-    std::shared_ptr<AST::BaseNode> rand);
+      const Token& tok, std::shared_ptr<AST::BaseNode> rand);
   /**
    * Convert tok to an Instruction2, with rand1 and rand2 as its parameters.
    * If this is not possible, raise an exception.
    */
   std::shared_ptr<AST::BaseNode> parseInstruction(
-    const Token& tok,
-    std::shared_ptr<AST::BaseNode> rand1,
-    std::shared_ptr<AST::BaseNode> rand2);
+      const Token& tok, std::shared_ptr<AST::BaseNode> rand1,
+      std::shared_ptr<AST::BaseNode> rand2);
 
   std::shared_ptr<AST::BaseNode> parseInstruction(const Token& tok,
                                                   const TokenList& rands);
@@ -538,23 +479,22 @@ public:
    */
   static int expectNewline(const TokenList& list, int start, int max);
 
-private:
+ private:
   TokenList mTokens;
   AST::Root mRoot;
   int mPos;
 };
 
-class ParserException : std::exception
-{
-public:
+class ParserException : std::exception {
+ public:
   ParserException(const char* msg) { mMsg = msg; }
 
   ParserException(const std::string& msg) { mMsg = msg; }
 
   virtual const char* what() const noexcept { return mMsg.c_str(); }
 
-private:
+ private:
   std::string mMsg;
 };
 
-#endif // PARSER_H
+#endif  // PARSER_H

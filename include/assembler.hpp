@@ -6,9 +6,8 @@
  * The assembler takes an AST as input and outputs an object file. It should
  * evaluate any constant expressions in the AST (trivially optimize).
  */
-class Assembler
-{
-public:
+class Assembler {
+ public:
   /**
    * Given any type of node, evaluate it and its descendents, recursively.
    *
@@ -16,7 +15,7 @@ public:
    * @throws AssemblerException if any child is invalid.
    */
   static std::shared_ptr<AST::BaseNode> evaluate(
-    std::shared_ptr<AST::BaseNode>);
+      std::shared_ptr<AST::BaseNode>);
 
   /**
    * Given a BaseInstruction node, evaluate its operands.
@@ -25,7 +24,7 @@ public:
    * @throws AssemblerException if any child is invalid.
    */
   static std::shared_ptr<AST::BaseInstruction> evaluateInstruction(
-    std::shared_ptr<AST::BaseInstruction> node);
+      std::shared_ptr<AST::BaseInstruction> node);
 
   /**
    * Given a BaseBinaryOp node, evaluate it and its children where possible.
@@ -34,7 +33,7 @@ public:
    * @throws AssemblerException if any child is invalid.
    */
   static std::shared_ptr<AST::BaseNode> evaluateBinaryOp(
-    std::shared_ptr<AST::BaseBinaryOp> node);
+      std::shared_ptr<AST::BaseBinaryOp> node);
 
   /**
    * Given a BaseUnaryOp node, evaluate it and its children where possible.
@@ -43,18 +42,17 @@ public:
    * @throws AssemblerException if any child is invalid.
    */
   static std::shared_ptr<AST::BaseNode> evaluateUnaryOp(
-    std::shared_ptr<AST::BaseUnaryOp> node);
+      std::shared_ptr<AST::BaseUnaryOp> node);
 };
 
-class AssemblerException : std::exception
-{
-public:
+class AssemblerException : std::exception {
+ public:
   AssemblerException(const char* msg) { mMsg = msg; }
 
   AssemblerException(const std::string& msg) { mMsg = msg; }
 
   virtual const char* what() const noexcept { return mMsg.c_str(); }
 
-private:
+ private:
   std::string mMsg;
 };

@@ -3,95 +3,72 @@
 
 #include "parser.hpp"
 
-Parser::Parser(TokenList& tokens) :
-  mTokens{tokens},
-  mRoot{},
-  mPos{0}
-{ }
+Parser::Parser(TokenList& tokens) : mTokens{tokens}, mRoot{}, mPos{0} {}
 
-Parser::~Parser() {
-
-}
-
+Parser::~Parser() {}
 
 using namespace AST;
 
 static const std::array<const Token, 8> registers = {
-  "a",
-  "f",
-  "b",
-  "c",
-  "d",
-  "e",
-  "h",
-  "l",
+    "a", "f", "b", "c", "d", "e", "h", "l",
 };
 
 static const std::array<const Token, 6> doubleRegisters = {
-  "af",
-  "bc",
-  "de",
-  "hl",
-  "sp",
-  "pc",
+    "af", "bc", "de", "hl", "sp", "pc",
 };
 
-static InstructionPropsList instructions{ {
-  {"add", InstructionType::ADD, 2, 2},
-  {"adc", InstructionType::ADC, 2, 2},
-  {"inc", InstructionType::INC, 1, 1},
-  {"sub", InstructionType::SUB, 1, 2},
-  {"sbc", InstructionType::SBC, 2, 2},
-  {"and", InstructionType::AND, 1, 1},
-  {"xor", InstructionType::XOR, 1, 1},
-  {"or", InstructionType::OR, 1, 1},
-  {"cp", InstructionType::CP, 1, 1},
-  {"dec", InstructionType::DEC, 1, 1},
-  {"rlc", InstructionType::RLC, 1, 1},
-  {"rlca", InstructionType::RLCA, 0, 0},
-  {"rl", InstructionType::RL, 1, 1},
-  {"rla", InstructionType::RLA, 0, 0},
-  {"rrc", InstructionType::RRC, 1, 1},
-  {"rrca", InstructionType::RRCA, 0, 0},
-  {"rr", InstructionType::RR, 1, 1},
-  {"rra", InstructionType::RRA, 0, 0},
-  {"daa", InstructionType::DAA, 0, 0},
-  {"scf", InstructionType::SCF, 0, 0},
-  {"cpl", InstructionType::CPL, 0, 0},
-  {"ccf", InstructionType::CCF, 0, 0},
+static InstructionPropsList instructions{{
+    {"add", InstructionType::ADD, 2, 2},
+    {"adc", InstructionType::ADC, 2, 2},
+    {"inc", InstructionType::INC, 1, 1},
+    {"sub", InstructionType::SUB, 1, 2},
+    {"sbc", InstructionType::SBC, 2, 2},
+    {"and", InstructionType::AND, 1, 1},
+    {"xor", InstructionType::XOR, 1, 1},
+    {"or", InstructionType::OR, 1, 1},
+    {"cp", InstructionType::CP, 1, 1},
+    {"dec", InstructionType::DEC, 1, 1},
+    {"rlc", InstructionType::RLC, 1, 1},
+    {"rlca", InstructionType::RLCA, 0, 0},
+    {"rl", InstructionType::RL, 1, 1},
+    {"rla", InstructionType::RLA, 0, 0},
+    {"rrc", InstructionType::RRC, 1, 1},
+    {"rrca", InstructionType::RRCA, 0, 0},
+    {"rr", InstructionType::RR, 1, 1},
+    {"rra", InstructionType::RRA, 0, 0},
+    {"daa", InstructionType::DAA, 0, 0},
+    {"scf", InstructionType::SCF, 0, 0},
+    {"cpl", InstructionType::CPL, 0, 0},
+    {"ccf", InstructionType::CCF, 0, 0},
 
-  {"ld", InstructionType::LD, 2, 2},
-  {"ldi", InstructionType::LDI, 2, 2},
-  {"ldd", InstructionType::LDD, 2, 2},
-  {"push", InstructionType::PUSH, 1, 1},
-  {"pop", InstructionType::POP, 1, 1},
+    {"ld", InstructionType::LD, 2, 2},
+    {"ldi", InstructionType::LDI, 2, 2},
+    {"ldd", InstructionType::LDD, 2, 2},
+    {"push", InstructionType::PUSH, 1, 1},
+    {"pop", InstructionType::POP, 1, 1},
 
-  {"jr", InstructionType::JR, 1, 2},
-  {"ret", InstructionType::RET, 0, 0},
-  {"jp", InstructionType::JP, 0, 0},
-  {"call", InstructionType::CALL, 0, 0},
-  {"rst", InstructionType::RST, 1, 1},
+    {"jr", InstructionType::JR, 1, 2},
+    {"ret", InstructionType::RET, 0, 0},
+    {"jp", InstructionType::JP, 0, 0},
+    {"call", InstructionType::CALL, 0, 0},
+    {"rst", InstructionType::RST, 1, 1},
 
-  {"nop", InstructionType::NOP, 0, 0},
-  {"stop", InstructionType::STOP, 0, 0},
-  {"halt", InstructionType::HALT, 0, 0},
-  {"di", InstructionType::DI, 0, 0},
-  {"ei", InstructionType::EI, 0, 0},
+    {"nop", InstructionType::NOP, 0, 0},
+    {"stop", InstructionType::STOP, 0, 0},
+    {"halt", InstructionType::HALT, 0, 0},
+    {"di", InstructionType::DI, 0, 0},
+    {"ei", InstructionType::EI, 0, 0},
 
-  {"sla", InstructionType::SLA, 1, 1},
-  {"sra", InstructionType::SRA, 1, 1},
-  {"swap", InstructionType::SWAP, 1, 1},
-  {"srl", InstructionType::SRL, 1, 1},
-  {"bit", InstructionType::BIT, 2, 2},
-  {"res", InstructionType::RES, 2, 2},
-  {"set", InstructionType::SET, 2, 2},
-} };
+    {"sla", InstructionType::SLA, 1, 1},
+    {"sra", InstructionType::SRA, 1, 1},
+    {"swap", InstructionType::SWAP, 1, 1},
+    {"srl", InstructionType::SRL, 1, 1},
+    {"bit", InstructionType::BIT, 2, 2},
+    {"res", InstructionType::RES, 2, 2},
+    {"set", InstructionType::SET, 2, 2},
+}};
 
-
-
-Token Parser::next() {
-  return mTokens.at(mPos++);
-}
+Token Parser::next() { return mTokens.at(mPos++); }
 
 Token Parser::peek() {
   if (static_cast<size_t>(mPos) < mTokens.size()) {
@@ -103,13 +80,9 @@ Token Parser::peek() {
   }
 }
 
-Token Parser::peekNext() {
-  return mTokens.at(mPos+1);
-}
+Token Parser::peekNext() { return mTokens.at(mPos + 1); }
 
-std::shared_ptr<BaseNode> Parser::parse() {
-  return program();
-};
+std::shared_ptr<BaseNode> Parser::parse() { return program(); };
 
 std::shared_ptr<BaseNode> Parser::program() {
   std::vector<std::shared_ptr<BaseNode>> lines;
@@ -186,15 +159,24 @@ std::shared_ptr<BaseNode> Parser::register_() {
   }
 
   switch (tok.at(0)) {
-    case 'a': return std::make_shared<Register<'a'>>();
-    case 'f': return std::make_shared<Register<'f'>>();
-    case 'b': return std::make_shared<Register<'b'>>();
-    case 'c': return std::make_shared<Register<'c'>>();
-    case 'd': return std::make_shared<Register<'d'>>();
-    case 'e': return std::make_shared<Register<'e'>>();
-    case 'h': return std::make_shared<Register<'h'>>();
-    case 'l': return std::make_shared<Register<'l'>>();
-    default: throw ParserException("Unrecognized Register");
+    case 'a':
+      return std::make_shared<Register<'a'>>();
+    case 'f':
+      return std::make_shared<Register<'f'>>();
+    case 'b':
+      return std::make_shared<Register<'b'>>();
+    case 'c':
+      return std::make_shared<Register<'c'>>();
+    case 'd':
+      return std::make_shared<Register<'d'>>();
+    case 'e':
+      return std::make_shared<Register<'e'>>();
+    case 'h':
+      return std::make_shared<Register<'h'>>();
+    case 'l':
+      return std::make_shared<Register<'l'>>();
+    default:
+      throw ParserException("Unrecognized Register");
   }
 }
 
@@ -282,13 +264,11 @@ std::shared_ptr<BaseNode> Parser::primary() {
 }
 
 std::shared_ptr<BaseNode> Parser::number() {
-  return std::make_shared<Number>(static_cast<Number>(std::atoi(next().c_str())));
+  return std::make_shared<Number>(
+      static_cast<Number>(std::atoi(next().c_str())));
 }
 
-
-bool Parser::isNewline(const Token& tok) {
-  return tok == "EOL";
-}
+bool Parser::isNewline(const Token& tok) { return tok == "EOL"; }
 
 int Parser::expectNewline(const TokenList& list, int start, int max) {
   for (int i = start; i < max; i++) {
@@ -299,9 +279,7 @@ int Parser::expectNewline(const TokenList& list, int start, int max) {
   return -1;
 }
 
-bool Parser::isEof(const Token& tok) {
-  return tok == "EOF";
-}
+bool Parser::isEof(const Token& tok) { return tok == "EOF"; }
 
 TokenList Parser::readLine(TokenList& tokens) {
   TokenList list{};
@@ -360,9 +338,8 @@ bool Parser::isLabel(const Token& tok) {
   }
 
   for (auto it = tok.begin(); it != tok.end(); it++) {
-    if ((*it < '0' || *it > '9') &&
-        (*it < 'A' || *it > 'Z') && (*it < 'a' || *it > 'z') &&
-        *it != '_') {
+    if ((*it < '0' || *it > '9') && (*it < 'A' || *it > 'Z') &&
+        (*it < 'a' || *it > 'z') && *it != '_') {
       return false;
     }
   }
@@ -380,5 +357,5 @@ bool Parser::isRegister(const Token& tok) {
 
 bool Parser::isDRegister(const Token& tok) {
   return std::find(doubleRegisters.begin(), doubleRegisters.end(), tok) !=
-    doubleRegisters.end();
+         doubleRegisters.end();
 }
