@@ -141,12 +141,9 @@ BOOST_AUTO_TEST_CASE(parser_test_isDRegister) {
 
 BOOST_AUTO_TEST_SUITE_END();
 
-
-
 BOOST_AUTO_TEST_SUITE(parser_parse_tokens);
 
 BOOST_AUTO_TEST_CASE(parser_test_parseRegister) {
-
   {
     TokenList tokens{""};
     Parser parser{tokens};
@@ -348,7 +345,8 @@ BOOST_AUTO_TEST_CASE(parser_test_unary) {
     auto opBase = std::static_pointer_cast<AST::BaseUnaryOp>(node);
     BOOST_CHECK(opBase);
     BOOST_CHECK(opBase->opType() == AST::UnaryOpType::NEG);
-    auto op = std::static_pointer_cast<AST::UnaryOp<AST::UnaryOpType::NEG>>(opBase);
+    auto op =
+        std::static_pointer_cast<AST::UnaryOp<AST::UnaryOpType::NEG>>(opBase);
     BOOST_CHECK(op);
     auto baseOperand = op->operand();
     BOOST_CHECK(baseOperand->id() == AST::NodeType::NUMBER);
@@ -356,7 +354,6 @@ BOOST_AUTO_TEST_CASE(parser_test_unary) {
 }
 
 BOOST_AUTO_TEST_CASE(parser_test_label) {
-
   {
     TokenList tokens{"1asdf"};
     Parser parser{tokens};
@@ -402,30 +399,28 @@ BOOST_AUTO_TEST_CASE(parser_test_label) {
     BOOST_CHECK(label);
     BOOST_CHECK(label->name() == "asdf12aa23");
   }
-
 }
 
 BOOST_AUTO_TEST_CASE(parser_test_operand) {
-
   {
     TokenList tokens{""};
     Parser parser{tokens};
     BOOST_CHECK_THROW(parser.operand(), ParserException);
   }
 
-  { // Can't start with an operand
+  {  // Can't start with an operand
     TokenList tokens{"halt"};
     Parser parser{tokens};
     BOOST_CHECK_THROW(parser.operand(), ParserException);
   }
 
-  { // Instructions are not valid labels
+  {  // Instructions are not valid labels
     TokenList tokens{"+"};
     Parser parser{tokens};
     BOOST_CHECK_THROW(parser.operand(), ParserException);
   }
 
-  { // Labels are valid operands
+  {  // Labels are valid operands
     TokenList tokens{"asdf12aa23"};
     Parser parser{tokens};
     auto node = parser.operand();
@@ -435,7 +430,7 @@ BOOST_AUTO_TEST_CASE(parser_test_operand) {
     BOOST_CHECK(label->name() == "asdf12aa23");
   }
 
-  { // Numbers are valid operands
+  {  // Numbers are valid operands
     TokenList tokens{"123"};
     Parser parser{tokens};
     auto node = parser.operand();
@@ -445,7 +440,7 @@ BOOST_AUTO_TEST_CASE(parser_test_operand) {
     BOOST_CHECK(num->value() == 123);
   }
 
-  { // Registers are valid operands
+  {  // Registers are valid operands
     TokenList tokens{"d"};
     Parser parser{tokens};
     auto node = parser.operand();
@@ -459,14 +454,14 @@ BOOST_AUTO_TEST_CASE(parser_test_operand) {
 }
 
 BOOST_AUTO_TEST_CASE(parser_test_multiplication) {
-  { // Simplest case
+  {  // Simplest case
     TokenList tokens{"20"};
     Parser parser{tokens};
     auto node = parser.multiplication();
     BOOST_CHECK(node->id() == AST::NodeType::NUMBER);
   }
 
-  { // Times, where both children are numbers
+  {  // Times, where both children are numbers
     TokenList tokens{"20", "*", "123"};
     Parser parser{tokens};
     auto node = parser.multiplication();
@@ -474,13 +469,14 @@ BOOST_AUTO_TEST_CASE(parser_test_multiplication) {
     auto op = std::dynamic_pointer_cast<AST::BaseBinaryOp>(node);
     BOOST_CHECK(op);
     BOOST_CHECK(op->opType() == AST::BinaryOpType::MULT);
-    auto multOp = std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::MULT>>(node);
+    auto multOp =
+        std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::MULT>>(node);
     BOOST_CHECK(multOp);
     BOOST_CHECK(multOp->left()->id() == AST::NodeType::NUMBER);
     BOOST_CHECK(multOp->right()->id() == AST::NodeType::NUMBER);
   }
 
-  { // Division, where both children are numbers
+  {  // Division, where both children are numbers
     TokenList tokens{"200", "/", "20"};
     Parser parser{tokens};
     auto node = parser.multiplication();
@@ -488,13 +484,14 @@ BOOST_AUTO_TEST_CASE(parser_test_multiplication) {
     auto op = std::dynamic_pointer_cast<AST::BaseBinaryOp>(node);
     BOOST_CHECK(op);
     BOOST_CHECK(op->opType() == AST::BinaryOpType::DIV);
-    auto divOp = std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::DIV>>(node);
+    auto divOp =
+        std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::DIV>>(node);
     BOOST_CHECK(divOp);
     BOOST_CHECK(divOp->left()->id() == AST::NodeType::NUMBER);
     BOOST_CHECK(divOp->right()->id() == AST::NodeType::NUMBER);
   }
 
-  { // Left child is a unary and the right child is a multiplication
+  {  // Left child is a unary and the right child is a multiplication
     TokenList tokens{"-", "20", "/", "10", "*", "6"};
     Parser parser{tokens};
     auto node = parser.multiplication();
@@ -502,13 +499,14 @@ BOOST_AUTO_TEST_CASE(parser_test_multiplication) {
     auto op = std::dynamic_pointer_cast<AST::BaseBinaryOp>(node);
     BOOST_CHECK(op);
     BOOST_CHECK(op->opType() == AST::BinaryOpType::MULT);
-    auto multOp = std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::MULT>>(node);
+    auto multOp =
+        std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::MULT>>(node);
     BOOST_CHECK(multOp);
     BOOST_CHECK(multOp->left()->id() == AST::NodeType::BINARY_OP);
     BOOST_CHECK(multOp->right()->id() == AST::NodeType::NUMBER);
   }
 
-  { // Right child is a multiplication and the right child is a unary
+  {  // Right child is a multiplication and the right child is a unary
     TokenList tokens{"20", "*", "10", "*", "-", "6"};
     Parser parser{tokens};
     auto node = parser.multiplication();
@@ -516,21 +514,23 @@ BOOST_AUTO_TEST_CASE(parser_test_multiplication) {
     auto op = std::dynamic_pointer_cast<AST::BaseBinaryOp>(node);
     BOOST_CHECK(op);
     BOOST_CHECK(op->opType() == AST::BinaryOpType::MULT);
-    auto multOp = std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::MULT>>(node);
+    auto multOp =
+        std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::MULT>>(node);
     BOOST_CHECK(multOp);
     BOOST_CHECK(multOp->left()->id() == AST::NodeType::BINARY_OP);
     BOOST_CHECK(multOp->right()->id() == AST::NodeType::UNARY_OP);
-    auto leftBaseOp = std::dynamic_pointer_cast<AST::BaseBinaryOp>(multOp->left());
+    auto leftBaseOp =
+        std::dynamic_pointer_cast<AST::BaseBinaryOp>(multOp->left());
     BOOST_CHECK(leftBaseOp->opType() == AST::BinaryOpType::MULT);
-    auto leftOp = std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::MULT>>(leftBaseOp);
+    auto leftOp =
+        std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::MULT>>(
+            leftBaseOp);
     BOOST_CHECK(leftOp->right()->id() == AST::NodeType::NUMBER);
   }
-
 }
 
 BOOST_AUTO_TEST_CASE(parser_test_addition) {
-
-  { // Both children are numbers
+  {  // Both children are numbers
     TokenList tokens{"123", "+", "112"};
     Parser parser{tokens};
     auto node = parser.addition();
@@ -538,13 +538,14 @@ BOOST_AUTO_TEST_CASE(parser_test_addition) {
     auto op = std::dynamic_pointer_cast<AST::BaseBinaryOp>(node);
     BOOST_CHECK(op);
     BOOST_CHECK(op->opType() == AST::BinaryOpType::ADD);
-    auto addOp = std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::ADD>>(node);
+    auto addOp =
+        std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::ADD>>(node);
     BOOST_CHECK(addOp);
     BOOST_CHECK(addOp->left()->id() == AST::NodeType::NUMBER);
     BOOST_CHECK(addOp->right()->id() == AST::NodeType::NUMBER);
   }
 
-  { // Left child is number, right child is another BinaryOp
+  {  // Left child is number, right child is another BinaryOp
     TokenList tokens{"123", "-", "200", "-", "20"};
     Parser parser{tokens};
     auto node = parser.addition();
@@ -552,7 +553,8 @@ BOOST_AUTO_TEST_CASE(parser_test_addition) {
     auto op = std::dynamic_pointer_cast<AST::BaseBinaryOp>(node);
     BOOST_CHECK(op);
     BOOST_CHECK(op->opType() == AST::BinaryOpType::SUB);
-    auto subOp = std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::SUB>>(node);
+    auto subOp =
+        std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::SUB>>(node);
     BOOST_CHECK(subOp);
     BOOST_CHECK(subOp->left()->id() == AST::NodeType::BINARY_OP);
     BOOST_CHECK(subOp->right()->id() == AST::NodeType::NUMBER);
