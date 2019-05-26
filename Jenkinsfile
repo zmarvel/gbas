@@ -14,7 +14,7 @@ pipeline {
         }
         stage('Test GCC') {
             steps {
-                sh 'make CXX=g++ check'
+                sh 'make CHECK_OPTIONS="--log_format=JUNIT --log_level=all" CHECK_LOG=test_log_gcc.xml check'
             }
         }
         stage('Build Clang') {
@@ -25,7 +25,7 @@ pipeline {
         }
         stage('Test Clang') {
             steps {
-                sh 'make CXX=clang++ check'
+                sh 'make CXX=clang++ CHECK_OPTIONS="--log_format=JUNIT --log_level=all" CHECK_LOG=test_log_clang.xml check'
             }
         }
     }

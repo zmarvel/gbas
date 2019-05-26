@@ -200,6 +200,23 @@ namespace AST {
       virtual BinaryOpType opType() const {
         return BinaryOpType::INVALID;
       }
+
+      std::shared_ptr<BaseNode> left() {
+        return mL;
+      }
+
+      std::shared_ptr<BaseNode> right() {
+        return mR;
+      }
+
+    protected:
+      explicit BaseBinaryOp(std::shared_ptr<BaseNode> l,
+                        std::shared_ptr<BaseNode> r) :
+        mL{l}, mR{r}
+      { }
+
+    private:
+      std::shared_ptr<BaseNode> mL, mR;
   };
 
   template<BinaryOpType Top>
@@ -207,24 +224,12 @@ namespace AST {
     public:
       explicit BinaryOp(std::shared_ptr<BaseNode> l,
                         std::shared_ptr<BaseNode> r) :
-        mL{l}, mR{r}
-      {
-      }
+        BaseBinaryOp{l, r}
+      { }
 
       virtual BinaryOpType opType() const {
         return Top;
       }
-
-      BaseNode& left() {
-        return *mL;
-      }
-
-      BaseNode& right() {
-        return *mR;
-      }
-
-    private:
-      std::shared_ptr<BaseNode> mL, mR;
   };
 
   using AddOp = BinaryOp<BinaryOpType::ADD>;
@@ -242,98 +247,108 @@ namespace AST {
       virtual UnaryOpType opType() const {
         return UnaryOpType::INVALID;
       }
+
+      std::shared_ptr<BaseNode> operand() {
+        return mRand;
+      }
+
+    protected:
+      explicit BaseUnaryOp(std::shared_ptr<BaseNode> rand) :
+        mRand{rand}
+      { }
+
+    private:
+      std::shared_ptr<BaseNode> mRand;
+
   };
 
   template<UnaryOpType Top>
   class UnaryOp : public BaseUnaryOp {
     public:
       explicit UnaryOp(std::shared_ptr<BaseNode> rand) :
-        mRand{rand}
+        BaseUnaryOp{rand}
       { }
 
       virtual UnaryOpType opType() const {
         return Top;
       }
-
-      BaseNode& operand() {
-        return *mRand;
-      }
-
-    private:
-      std::shared_ptr<BaseNode> mRand;
   };
 
   using NegOp = UnaryOp<UnaryOpType::NEG>;
 
   class BaseInstruction : public Node<NodeType::INSTRUCTION> {
     public:
-      BaseInstruction() :
-        mType{InstructionType::INVALID},
-        mNOperands{0}
-      { }
-
-      BaseInstruction(InstructionType type, int nOperands) :
-        mType{type},
-        mNOperands{nOperands}
-      { }
-
       InstructionType type() const {
         return mType;
       }
 
-      int nOperands() const {
-        return mNOperands;
-      }
+      virtual int nOperands() const = 0;
 
-    protected: 
-      InstructionType mType;
-      int mNOperands;
-  };
-
-  class Instruction0 : public BaseInstruction {
-    public:
-      Instruction0(InstructionType type) :
-        BaseInstruction{type, 0}
+    protected:
+      BaseInstruction() :
+        mType{InstructionType::INVALID}
       { }
 
-    private:
+      BaseInstruction(InstructionType type) :
+        mType{type}
+      { }
+
       InstructionType mType;
   };
 
-  class Instruction1 : public BaseInstruction {
+  template<int NOperands>
+  class Instruction : public BaseInstruction {
+    public:
+      virtual int nOperands() const {
+        return NOperands;
+      }
+
+    protected:
+      Instruction(InstructionType type) :
+        BaseInstruction{type}
+      { }
+  };
+
+  class Instruction0 : public Instruction<0> {
+    public:
+      Instruction0(InstructionType type) :
+        Instruction<0>{type}
+      { }
+  };
+
+  class Instruction1 : public Instruction<1> {
     public:
       Instruction1(InstructionType type, std::shared_ptr<BaseNode> operand) :
-        BaseInstruction{type, 1},
+        Instruction<1>{type},
         mOperand{operand}
       { }
 
-      BaseNode& operand() {
-        return *mOperand;
+      std::shared_ptr<BaseNode> operand() {
+        return mOperand;
       }
 
     private:
       std::shared_ptr<BaseNode> mOperand;
   };
 
-  class Instruction2 : public BaseInstruction {
+  class Instruction2 : public Instruction<2> {
     public:
-      Instruction2(InstructionType type, std::shared_ptr<BaseNode> loperand,
-                   std::shared_ptr<BaseNode> roperand) :
-        BaseInstruction{type, 2},
-        mLoperand{loperand},
-        mRoperand{roperand}
+      Instruction2(InstructionType type, std::shared_ptr<BaseNode> left,
+                   std::shared_ptr<BaseNode> right) :
+        Instruction<2>{type},
+        mLoperand{left},
+        mRoperand{right}
       { }
 
-      BaseNode& loperand() {
-        return *mLoperand;
+      std::shared_ptr<BaseNode> left() {
+        return mLoperand;
       }
 
-      BaseNode& roperand() {
-        return *mRoperand;
+      std::shared_ptr<BaseNode> right() {
+        return mRoperand;
       }
 
     private:
-      InstructionType mType;
       std::shared_ptr<BaseNode> mLoperand, mRoperand;
 
   };

@@ -350,8 +350,8 @@ BOOST_AUTO_TEST_CASE(parser_test_unary) {
     BOOST_CHECK(opBase->opType() == AST::UnaryOpType::NEG);
     auto op = std::static_pointer_cast<AST::UnaryOp<AST::UnaryOpType::NEG>>(opBase);
     BOOST_CHECK(op);
-    auto& baseOperand = op->operand();
-    BOOST_CHECK(baseOperand.id() == AST::NodeType::NUMBER);
+    auto baseOperand = op->operand();
+    BOOST_CHECK(baseOperand->id() == AST::NodeType::NUMBER);
   }
 }
 
@@ -476,8 +476,8 @@ BOOST_AUTO_TEST_CASE(parser_test_multiplication) {
     BOOST_CHECK(op->opType() == AST::BinaryOpType::MULT);
     auto multOp = std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::MULT>>(node);
     BOOST_CHECK(multOp);
-    BOOST_CHECK(multOp->left().id() == AST::NodeType::NUMBER);
-    BOOST_CHECK(multOp->right().id() == AST::NodeType::NUMBER);
+    BOOST_CHECK(multOp->left()->id() == AST::NodeType::NUMBER);
+    BOOST_CHECK(multOp->right()->id() == AST::NodeType::NUMBER);
   }
 
   { // Division, where both children are numbers
@@ -490,8 +490,8 @@ BOOST_AUTO_TEST_CASE(parser_test_multiplication) {
     BOOST_CHECK(op->opType() == AST::BinaryOpType::DIV);
     auto divOp = std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::DIV>>(node);
     BOOST_CHECK(divOp);
-    BOOST_CHECK(divOp->left().id() == AST::NodeType::NUMBER);
-    BOOST_CHECK(divOp->right().id() == AST::NodeType::NUMBER);
+    BOOST_CHECK(divOp->left()->id() == AST::NodeType::NUMBER);
+    BOOST_CHECK(divOp->right()->id() == AST::NodeType::NUMBER);
   }
 
   { // Left child is a unary and the right child is a multiplication
@@ -504,8 +504,8 @@ BOOST_AUTO_TEST_CASE(parser_test_multiplication) {
     BOOST_CHECK(op->opType() == AST::BinaryOpType::MULT);
     auto multOp = std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::MULT>>(node);
     BOOST_CHECK(multOp);
-    BOOST_CHECK(multOp->left().id() == AST::NodeType::BINARY_OP);
-    BOOST_CHECK(multOp->right().id() == AST::NodeType::NUMBER);
+    BOOST_CHECK(multOp->left()->id() == AST::NodeType::BINARY_OP);
+    BOOST_CHECK(multOp->right()->id() == AST::NodeType::NUMBER);
   }
 
   { // Right child is a multiplication and the right child is a unary
@@ -518,12 +518,12 @@ BOOST_AUTO_TEST_CASE(parser_test_multiplication) {
     BOOST_CHECK(op->opType() == AST::BinaryOpType::MULT);
     auto multOp = std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::MULT>>(node);
     BOOST_CHECK(multOp);
-    BOOST_CHECK(multOp->left().id() == AST::NodeType::BINARY_OP);
-    BOOST_CHECK(multOp->right().id() == AST::NodeType::UNARY_OP);
-    auto& leftBaseOp = dynamic_cast<AST::BaseBinaryOp&>(multOp->left());
-    BOOST_CHECK(leftBaseOp.opType() == AST::BinaryOpType::MULT);
-    auto& leftOp = dynamic_cast<AST::BinaryOp<AST::BinaryOpType::MULT>&>(leftBaseOp);
-    BOOST_CHECK(leftOp.right().id() == AST::NodeType::NUMBER);
+    BOOST_CHECK(multOp->left()->id() == AST::NodeType::BINARY_OP);
+    BOOST_CHECK(multOp->right()->id() == AST::NodeType::UNARY_OP);
+    auto leftBaseOp = std::dynamic_pointer_cast<AST::BaseBinaryOp>(multOp->left());
+    BOOST_CHECK(leftBaseOp->opType() == AST::BinaryOpType::MULT);
+    auto leftOp = std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::MULT>>(leftBaseOp);
+    BOOST_CHECK(leftOp->right()->id() == AST::NodeType::NUMBER);
   }
 
 }
@@ -540,8 +540,8 @@ BOOST_AUTO_TEST_CASE(parser_test_addition) {
     BOOST_CHECK(op->opType() == AST::BinaryOpType::ADD);
     auto addOp = std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::ADD>>(node);
     BOOST_CHECK(addOp);
-    BOOST_CHECK(addOp->left().id() == AST::NodeType::NUMBER);
-    BOOST_CHECK(addOp->right().id() == AST::NodeType::NUMBER);
+    BOOST_CHECK(addOp->left()->id() == AST::NodeType::NUMBER);
+    BOOST_CHECK(addOp->right()->id() == AST::NodeType::NUMBER);
   }
 
   { // Left child is number, right child is another BinaryOp
@@ -554,8 +554,8 @@ BOOST_AUTO_TEST_CASE(parser_test_addition) {
     BOOST_CHECK(op->opType() == AST::BinaryOpType::SUB);
     auto subOp = std::dynamic_pointer_cast<AST::BinaryOp<AST::BinaryOpType::SUB>>(node);
     BOOST_CHECK(subOp);
-    BOOST_CHECK(subOp->left().id() == AST::NodeType::BINARY_OP);
-    BOOST_CHECK(subOp->right().id() == AST::NodeType::NUMBER);
+    BOOST_CHECK(subOp->left()->id() == AST::NodeType::BINARY_OP);
+    BOOST_CHECK(subOp->right()->id() == AST::NodeType::NUMBER);
   }
 }
 
@@ -620,15 +620,15 @@ BOOST_AUTO_TEST_CASE(parser_test_parseInstruction) {
     BOOST_CHECK(inst->nOperands() == 2);
     auto inst2 = std::dynamic_pointer_cast<AST::Instruction2>(inst);
     BOOST_CHECK(inst2);
-    auto& baseLoperand = inst2->loperand();
+    auto& baseLoperand = inst2->left();
     BOOST_CHECK(baseLoperand.id() == AST::NodeType::REGISTER);
-    auto loperand = dynamic_cast<AST::Register<'a'>&>(baseLoperand);
-    BOOST_CHECK(loperand.reg() == 'a');
+    auto left = dynamic_cast<AST::Register<'a'>&>(baseLoperand);
+    BOOST_CHECK(left.reg() == 'a');
 
-    auto& baseRoperand = inst2->roperand();
+    auto& baseRoperand = inst2->right();
     BOOST_CHECK(baseRoperand.id() == AST::NodeType::NUMBER);
-    auto roperand = dynamic_cast<AST::Number&>(baseRoperand);
-    BOOST_CHECK(roperand.value() == 1);
+    auto right = dynamic_cast<AST::Number&>(baseRoperand);
+    BOOST_CHECK(right.value() == 1);
   }
 
   { // One-argument version of sub
@@ -658,15 +658,15 @@ BOOST_AUTO_TEST_CASE(parser_test_parseInstruction) {
     auto inst2 = std::dynamic_pointer_cast<AST::Instruction2>(inst);
     BOOST_CHECK(inst2);
 
-    auto& baseLoperand = inst2->loperand();
+    auto& baseLoperand = inst2->left();
     BOOST_CHECK(baseLoperand.id() == AST::NodeType::NUMBER);
-    auto loperand = dynamic_cast<AST::Number&>(baseLoperand);
-    BOOST_CHECK(loperand.value() == 1);
+    auto left = dynamic_cast<AST::Number&>(baseLoperand);
+    BOOST_CHECK(left.value() == 1);
 
-    auto& baseRoperand = inst2->roperand();
+    auto& baseRoperand = inst2->right();
     BOOST_CHECK(baseRoperand.id() == AST::NodeType::NUMBER);
-    auto roperand = dynamic_cast<AST::Number&>(baseRoperand);
-    BOOST_CHECK(roperand.value() == 2);
+    auto right = dynamic_cast<AST::Number&>(baseRoperand);
+    BOOST_CHECK(right.value() == 2);
   }
 }
 
