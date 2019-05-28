@@ -1,6 +1,6 @@
 
-CXXFLAGS += -g -Wextra -Wall -std=c++11
-LDFLAGS += -g -Wextra -Wall
+CXXFLAGS += -ggdb -Wextra -Wall
+LDFLAGS += -ggdb -Wextra -Wall
 
 EXE_SRC = src/main.cpp
 EXE = gbas
@@ -8,6 +8,7 @@ TEST_EXE = gbas_test
 SRCS = src/tokenizer.cpp \
        src/parser.cpp \
        src/assembler.cpp \
+       src/elf.cpp \
 
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
@@ -19,6 +20,7 @@ INC = -Iinclude
 TEST_SRCS = test/tokenizer_test.cpp \
 	    test/parser_test.cpp \
 	    test/assembler_test.cpp \
+	    test/elf_test.cpp \
 
 TEST_OBJS = $(TEST_SRCS:.cpp=.o)
 
@@ -52,8 +54,11 @@ endif
 .PHONY: clean
 clean:
 	rm -f $(OBJS) $(DEPS) $(EXE) $(TEST_OBJS) $(TEST_DEPS) $(TEST_EXE)
-	rm -rf docs
 	rm -rf coverage/ coverage.info $(COVS) $(TEST_COVS)
+
+.PHONY: distclean
+distclean: clean
+	rm -rf docs
 
 .PHONY: ctags
 ctags:
