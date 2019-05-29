@@ -2,6 +2,8 @@
 #define BOOST_TEST_DYN_LINK
 #include <boost/test/unit_test.hpp>
 
+#include <numeric>
+
 #include "elf.hpp"
 
 using namespace GBAS;
@@ -22,7 +24,19 @@ class ELFWrapper : public ELF {
     return mRelocationSections;
   }
   SectionHeaderTable& getSectionHeaders() { return mSectionHeaders; }
-  uint16_t getCurrentSectionIdx() { return mCurrentSection; }
+  uint16_t getCurrSymTabIdx() { return mCurrSymTab; }
+
+  std::vector<uint8_t>& getData() { return mData; }
+  uint32_t getDataIdx() { return mDataIdx; }
+  std::vector<uint8_t>& getRodata() { return mRodata; }
+  uint32_t getRodataIdx() { return mRodataIdx; }
+  std::vector<uint8_t>& getBss() { return mBss; }
+  uint32_t getBssIdx() { return mBssIdx; }
+  std::vector<uint8_t>& getText() { return mText; }
+  uint32_t getTextIdx() { return mTextIdx; }
+  std::vector<uint8_t>& getInit() { return mInit; }
+  uint32_t getInitIdx() { return mInitIdx; }
+
   std::unordered_set<std::string>& getSymbolNames() { return mSymbolNames; }
 };
 
@@ -62,7 +76,7 @@ BOOST_AUTO_TEST_CASE(elf_test_constructor) {
   // This is 0 in the beginning of the constructor, but should be 2 after
   // adding the two string tables.
   // TODO and eventuall rodata, etc.
-  BOOST_CHECK_EQUAL(elfHeader.e_shnum, 2);
+  BOOST_CHECK_EQUAL(elfHeader.e_shnum, 7);
 
   StringTable& sectionNames = elf.getSectionNames();
   SectionHeaderTable& sectionHeaders = elf.getSectionHeaders();
@@ -77,7 +91,12 @@ BOOST_AUTO_TEST_CASE(elf_test_constructor) {
     BOOST_CHECK_EQUAL(hdr.sh_addr, 0);
     BOOST_CHECK_EQUAL(hdr.sh_offset, 0);
     // This is initially zero, but the constructor adds two section names
-    BOOST_CHECK_EQUAL(hdr.sh_size, 2);
+    BOOST_CHECK_EQUAL(hdr.sh_size,
+                      std::accumulate(sectionNames.begin(), sectionNames.end(),
+                                      0, [](size_t a, std::string b) {
+                                        // add 1 for the null byte
+                                        return a + b.size() + 1;
+                                      }));
     BOOST_CHECK_EQUAL(hdr.sh_link, 0);
     BOOST_CHECK_EQUAL(hdr.sh_info, 0);
     BOOST_CHECK_EQUAL(hdr.sh_addralign, 0);
@@ -99,6 +118,86 @@ BOOST_AUTO_TEST_CASE(elf_test_constructor) {
     BOOST_CHECK_EQUAL(hdr.sh_addralign, 0);
     BOOST_CHECK_EQUAL(hdr.sh_entsize, 0);
   }
+
+  // Test the data section .data
+  {
+    BOOST_CHECK_EQUAL(sectionNames.at(2), "data");
+    Elf32_Shdr& hdr = sectionHeaders.at(2);
+    BOOST_CHECK_EQUAL(hdr.sh_name, 2);
+    BOOST_CHECK_EQUAL(hdr.sh_type, SHT_PROGBITS);
+    BOOST_CHECK_EQUAL(hdr.sh_flags, SHF_ALLOC | SHF_WRITE);
+    BOOST_CHECK_EQUAL(hdr.sh_addr, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_offset, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_size, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_link, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_info, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_addralign, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_entsize, 0);
+  }
+
+  // Test the read-only data section .rodata
+  {
+    BOOST_CHECK_EQUAL(sectionNames.at(3), "rodata");
+    Elf32_Shdr& hdr = sectionHeaders.at(3);
+    BOOST_CHECK_EQUAL(hdr.sh_name, 3);
+    BOOST_CHECK_EQUAL(hdr.sh_type, SHT_PROGBITS);
+    BOOST_CHECK_EQUAL(hdr.sh_flags, SHF_ALLOC);
+    BOOST_CHECK_EQUAL(hdr.sh_addr, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_offset, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_size, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_link, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_info, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_addralign, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_entsize, 0);
+  }
+
+  // Test the uninitialized data section .bss
+  {
+    BOOST_CHECK_EQUAL(sectionNames.at(4), "bss");
+    Elf32_Shdr& hdr = sectionHeaders.at(4);
+    BOOST_CHECK_EQUAL(hdr.sh_name, 4);
+    BOOST_CHECK_EQUAL(hdr.sh_type, SHT_NOBITS);
+    BOOST_CHECK_EQUAL(hdr.sh_flags, SHF_ALLOC | SHF_WRITE);
+    BOOST_CHECK_EQUAL(hdr.sh_addr, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_offset, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_size, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_link, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_info, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_addralign, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_entsize, 0);
+  }
+
+  // Test the executable code section .text
+  {
+    BOOST_CHECK_EQUAL(sectionNames.at(5), "text");
+    Elf32_Shdr& hdr = sectionHeaders.at(5);
+    BOOST_CHECK_EQUAL(hdr.sh_name, 5);
+    BOOST_CHECK_EQUAL(hdr.sh_type, SHT_PROGBITS);
+    BOOST_CHECK_EQUAL(hdr.sh_flags, SHF_ALLOC | SHF_EXECINSTR);
+    BOOST_CHECK_EQUAL(hdr.sh_addr, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_offset, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_size, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_link, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_info, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_addralign, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_entsize, 0);
+  }
+
+  // Test the executable initialization code section .init
+  {
+    BOOST_CHECK_EQUAL(sectionNames.at(6), "init");
+    Elf32_Shdr& hdr = sectionHeaders.at(6);
+    BOOST_CHECK_EQUAL(hdr.sh_name, 6);
+    BOOST_CHECK_EQUAL(hdr.sh_type, SHT_PROGBITS);
+    BOOST_CHECK_EQUAL(hdr.sh_flags, SHF_ALLOC | SHF_EXECINSTR);
+    BOOST_CHECK_EQUAL(hdr.sh_addr, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_offset, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_size, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_link, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_info, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_addralign, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_entsize, 0);
+  }
 }
 
 BOOST_AUTO_TEST_CASE(elf_test_addString) {
@@ -108,23 +207,30 @@ BOOST_AUTO_TEST_CASE(elf_test_addString) {
   BOOST_CHECK_EQUAL(elf.getStringTable().size(), 1);
   BOOST_CHECK_EQUAL(elf.getStringTable().at(0), "mstring123");
   BOOST_CHECK_EQUAL(elf.getSectionHeaders().at(elf.getStringTableIdx()).sh_size,
-                    1);
+                    11);
 }
 
 BOOST_AUTO_TEST_CASE(elf_test_addSectionName) {
   ELFWrapper elf{};
 
   elf.addSectionName("msection1");
-  BOOST_CHECK_EQUAL(elf.getSectionNames().size(), 3);
-  BOOST_CHECK_EQUAL(elf.getSectionNames().at(2), "msection1");
+  BOOST_CHECK_EQUAL(elf.getSectionNames().size(), 8);
+  BOOST_CHECK_EQUAL(elf.getSectionNames().at(7), "msection1");
   BOOST_CHECK_EQUAL(
-      elf.getSectionHeaders().at(elf.getSectionNamesIdx()).sh_size, 3);
+      elf.getSectionHeaders().at(elf.getSectionNamesIdx()).sh_size,
+      std::accumulate(elf.getSectionNames().begin(),
+                      elf.getSectionNames().end(), 0,
+                      [](size_t acc, std::string str) {
+                        // add 1 for null byte
+                        return acc + str.size() + 1;
+                      }));
 }
 
 BOOST_AUTO_TEST_CASE(elf_test_addSectionHeader) {
   ELFWrapper elf{};
 
   // Test the copy version
+  auto prevShNum = elf.getSectionHeaders().size();
   {
     Elf32_Shdr hdr;
 
@@ -134,8 +240,8 @@ BOOST_AUTO_TEST_CASE(elf_test_addSectionHeader) {
       pHdr[i] = i;
     }
     elf.addSectionHeader(hdr);
-    BOOST_CHECK_EQUAL(elf.getSectionHeaders().size(), 3);
-    auto& storedHdr = elf.getSectionHeaders().at(2);
+    BOOST_CHECK_EQUAL(elf.getSectionHeaders().size(), prevShNum + 1);
+    auto& storedHdr = elf.getSectionHeaders().at(prevShNum);
     char* pStoredHdr = reinterpret_cast<char*>(&storedHdr);
     for (size_t i = 0; i < sizeof(storedHdr); i++) {
       BOOST_CHECK_EQUAL(pStoredHdr[i], i);
@@ -145,8 +251,8 @@ BOOST_AUTO_TEST_CASE(elf_test_addSectionHeader) {
   // Test the rvalue version
   {
     elf.addSectionHeader(Elf32_Shdr{0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
-    BOOST_CHECK_EQUAL(elf.getSectionHeaders().size(), 4);
-    auto& storedHdr = elf.getSectionHeaders().at(3);
+    BOOST_CHECK_EQUAL(elf.getSectionHeaders().size(), prevShNum + 2);
+    auto& storedHdr = elf.getSectionHeaders().at(prevShNum + 1);
     BOOST_CHECK_EQUAL(storedHdr.sh_name, 0);
     BOOST_CHECK_EQUAL(storedHdr.sh_type, 1);
     BOOST_CHECK_EQUAL(storedHdr.sh_flags, 2);
@@ -168,19 +274,20 @@ BOOST_AUTO_TEST_CASE(elf_test_setSection) {
 
   // Changing to a section name that doesn't exist should create a new symbol
   // table and a new relocation table
+  auto prevShNum = elf.getSectionHeaders().size();
   {
     auto& hdr = elf.setSection("msection");
 
     // Check that two new section headers have been added
-    BOOST_CHECK_EQUAL(elf.getSectionHeaders().size(), 4);
-    BOOST_CHECK_EQUAL(elf.getHeader().e_shnum, 4);
+    BOOST_CHECK_EQUAL(elf.getSectionHeaders().size(), prevShNum + 2);
+    BOOST_CHECK_EQUAL(elf.getHeader().e_shnum, prevShNum + 2);
 
-    BOOST_CHECK_EQUAL(hdr.sh_name, 2);
+    BOOST_CHECK_EQUAL(hdr.sh_name, prevShNum);
     BOOST_CHECK_EQUAL(hdr.sh_type, SHT_SYMTAB);
     BOOST_CHECK_EQUAL(hdr.sh_flags, 0);
     BOOST_CHECK_EQUAL(hdr.sh_addr, 0);
     BOOST_CHECK_EQUAL(hdr.sh_offset, 0);
-    BOOST_CHECK_EQUAL(hdr.sh_size, 1);
+    BOOST_CHECK_EQUAL(hdr.sh_size, sizeof(Elf32_Sym));
     BOOST_CHECK_EQUAL(hdr.sh_link, elf.getStringTableIdx());
     BOOST_CHECK_EQUAL(hdr.sh_info, 0);
     BOOST_CHECK_EQUAL(hdr.sh_addralign, 0);
@@ -202,36 +309,36 @@ BOOST_AUTO_TEST_CASE(elf_test_setSection) {
     BOOST_CHECK_EQUAL(elf.getRelocationSections().size(), 1);
 
     // Now check the relocation section's header
-    auto& relHdr = elf.getSectionHeaders().at(3);
-    BOOST_CHECK_EQUAL(relHdr.sh_name, 3);
+    auto& relHdr = elf.getSectionHeaders().at(prevShNum + 1);
+    BOOST_CHECK_EQUAL(relHdr.sh_name, prevShNum + 1);
     BOOST_CHECK_EQUAL(relHdr.sh_type, SHT_REL);
     BOOST_CHECK_EQUAL(relHdr.sh_flags, 0);
     BOOST_CHECK_EQUAL(relHdr.sh_addr, 0);
     BOOST_CHECK_EQUAL(relHdr.sh_offset, 0);
     BOOST_CHECK_EQUAL(relHdr.sh_size, 0);
     // index of msection shdr
-    BOOST_CHECK_EQUAL(relHdr.sh_link, 2);
-    BOOST_CHECK_EQUAL(relHdr.sh_info, 2);
+    BOOST_CHECK_EQUAL(relHdr.sh_link, prevShNum);
+    BOOST_CHECK_EQUAL(relHdr.sh_info, prevShNum);
     BOOST_CHECK_EQUAL(relHdr.sh_addralign, 0);
     BOOST_CHECK_EQUAL(relHdr.sh_entsize, sizeof(Elf32_Rel));
 
     // Check that the names got added to the section names string table
-    BOOST_CHECK_EQUAL(elf.getSectionNames().size(), 4);
-    BOOST_CHECK_EQUAL(elf.getSectionNames().at(2), "msection");
-    BOOST_CHECK_EQUAL(elf.getSectionNames().at(3), "relmsection");
+    BOOST_CHECK_EQUAL(elf.getSectionNames().size(), prevShNum + 2);
+    BOOST_CHECK_EQUAL(elf.getSectionNames().at(prevShNum), "msection");
+    BOOST_CHECK_EQUAL(elf.getSectionNames().at(prevShNum + 1), "relmsection");
 
-    BOOST_CHECK_EQUAL(elf.getCurrentSectionIdx(), 2);
+    BOOST_CHECK_EQUAL(elf.getCurrSymTabIdx(), prevShNum);
   }
 
   // Changing to an existing section should not create any new sections
   {
     elf.setSection("msection");
-    BOOST_CHECK_EQUAL(elf.getCurrentSectionIdx(), 2);
+    BOOST_CHECK_EQUAL(elf.getCurrSymTabIdx(), prevShNum);
     BOOST_CHECK_EQUAL(elf.getSymbolTables().size(), 1);
-    BOOST_CHECK_EQUAL(elf.getSectionHeaders().size(), 4);
-    BOOST_CHECK_EQUAL(elf.getHeader().e_shnum, 4);
+    BOOST_CHECK_EQUAL(elf.getSectionHeaders().size(), prevShNum + 2);
+    BOOST_CHECK_EQUAL(elf.getHeader().e_shnum, prevShNum + 2);
     BOOST_CHECK_EQUAL(elf.getRelocationSections().size(), 1);
-    BOOST_CHECK_EQUAL(elf.getSectionNames().size(), 4);
+    BOOST_CHECK_EQUAL(elf.getSectionNames().size(), prevShNum + 2);
   }
 
   // TODO what are valid section names? Invalid ones should fail
@@ -282,6 +389,73 @@ BOOST_AUTO_TEST_CASE(elf_test_addSymbol) {
     BOOST_CHECK_EQUAL(ent.st_other, STV_DEFAULT);
     BOOST_CHECK_EQUAL(ent.st_shndx, 1);
     BOOST_CHECK_EQUAL(elf.getStringTable().at(ent.st_name), "asdf");
+  }
+}
+
+BOOST_AUTO_TEST_CASE(elf_test_addData) {
+  ELFWrapper elf{};
+
+  std::vector<uint8_t> data(256);
+  for (size_t i = 0; i < data.size(); i++) {
+    data[i] = static_cast<uint8_t>(i * 2);
+  }
+  {
+    elf.addData(data);
+
+    std::vector<uint8_t>& rData = elf.getData();
+    BOOST_CHECK_EQUAL(rData.size(), data.size());
+    BOOST_CHECK_EQUAL(elf.getSectionHeaders().at(elf.getDataIdx()).sh_size,
+                      256);
+    for (size_t i = 0; i < data.size(); i++) {
+      BOOST_CHECK_EQUAL(data[i], rData[i]);
+    }
+  }
+
+  {
+    elf.addRodata(data);
+
+    std::vector<uint8_t>& rRodata = elf.getRodata();
+    BOOST_CHECK_EQUAL(rRodata.size(), data.size());
+    BOOST_CHECK_EQUAL(elf.getSectionHeaders().at(elf.getRodataIdx()).sh_size,
+                      256);
+    for (size_t i = 0; i < data.size(); i++) {
+      BOOST_CHECK_EQUAL(data[i], rRodata[i]);
+    }
+  }
+
+  {
+    elf.addBss(data);
+
+    std::vector<uint8_t>& rBss = elf.getBss();
+    BOOST_CHECK_EQUAL(rBss.size(), data.size());
+    BOOST_CHECK_EQUAL(elf.getSectionHeaders().at(elf.getBssIdx()).sh_size, 256);
+    for (size_t i = 0; i < data.size(); i++) {
+      BOOST_CHECK_EQUAL(data[i], rBss[i]);
+    }
+  }
+
+  {
+    elf.addText(data);
+
+    std::vector<uint8_t>& rText = elf.getText();
+    BOOST_CHECK_EQUAL(rText.size(), data.size());
+    BOOST_CHECK_EQUAL(elf.getSectionHeaders().at(elf.getTextIdx()).sh_size,
+                      256);
+    for (size_t i = 0; i < data.size(); i++) {
+      BOOST_CHECK_EQUAL(data[i], rText[i]);
+    }
+  }
+
+  {
+    elf.addInit(data);
+
+    std::vector<uint8_t>& rInit = elf.getInit();
+    BOOST_CHECK_EQUAL(rInit.size(), data.size());
+    BOOST_CHECK_EQUAL(elf.getSectionHeaders().at(elf.getInitIdx()).sh_size,
+                      256);
+    for (size_t i = 0; i < data.size(); i++) {
+      BOOST_CHECK_EQUAL(data[i], rInit[i]);
+    }
   }
 }
 

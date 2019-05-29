@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include <ostream>
 
 #include <elf.h>
 
@@ -76,6 +77,31 @@ class ELF {
   Elf32_Shdr& addSectionHeader(const Elf32_Shdr& shdr);
 
   /**
+   * Add data to the .data section.
+   */
+  size_t addData(const std::vector<uint8_t>& data);
+
+  /**
+   * Add data to the .rodata section.
+   */
+  size_t addRodata(const std::vector<uint8_t>& data);
+
+  /**
+   * Add data to the .bss section.
+   */
+  size_t addBss(const std::vector<uint8_t>& data);
+
+  /**
+   * Add data to the .text section.
+   */
+  size_t addText(const std::vector<uint8_t>& data);
+
+  /**
+   * Add data to the .init section.
+   */
+  size_t addInit(const std::vector<uint8_t>& data);
+
+  /**
    * Change the current section. If a section with the given name does not
    * already exist, it will be created (its name will be added to the section
    * name string table and an entry will be added to the section header table).
@@ -118,6 +144,8 @@ class ELF {
      } ElfN_Ehdr;
      */
 
+  void write(std::ostream out);
+
   /**
    * Helper for looking up a section's name in the section name string table
    * (mSectionNames).
@@ -141,11 +169,43 @@ class ELF {
 
   std::vector<SymbolTable> mSymbolTables;
   std::vector<RelocationSection> mRelocationSections;
+
   SectionHeaderTable mSectionHeaders;
+
   /**
    * Index of the current symbol table's section header in mSectionHeaders.
    */
-  uint16_t mCurrentSection;
+  uint16_t mCurrSymTab;
+
+  /**
+   * Initialized data in program memory.
+   */
+  std::vector<uint8_t> mData;
+  uint32_t mDataIdx;
+
+  /**
+   * Read-only (const) data.
+   */
+  std::vector<uint8_t> mRodata;
+  uint32_t mRodataIdx;
+
+  /**
+   * Uninitialized data in program memory.
+   */
+  std::vector<uint8_t> mBss;
+  uint32_t mBssIdx;
+
+  /**
+   * Executable instructions.
+   */
+  std::vector<uint8_t> mText;
+  uint32_t mTextIdx;
+
+  /**
+   * Executable instructions to be run during initialization.
+   */
+  std::vector<uint8_t> mInit;
+  uint32_t mInitIdx;
 
   /**
    * While this could eat up a lot of memory for a huge program, it's a lot
