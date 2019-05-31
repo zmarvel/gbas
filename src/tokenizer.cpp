@@ -35,8 +35,8 @@ void Tokenizer::logError(std::ostream& out, const std::string& msg,
   out << arrow << std::endl;
 }
 
-TokenList* Tokenizer::tokenize(std::basic_istream<char>& lines) {
-  TokenList* tokens = new TokenList{};
+TokenList Tokenizer::tokenize(std::basic_istream<char>& lines) {
+  TokenList tokens = TokenList{};
 
   int lineno = 0;
   std::string tokbuf;
@@ -88,16 +88,16 @@ TokenList* Tokenizer::tokenize(std::basic_istream<char>& lines) {
             pos++;
             state = State::END_TOKEN;
           } else {
-            logError(std::cerr, "Invalid token", std::string{line.data()},
+            logError(std::cerr, "Invalid token", std::string{line.c_str()},
                      lineno, pos);
-            return nullptr;
+            throw TokenizerException("Invalid token" + line, lineno, pos);
           }
           break;
         case State::STRING_TOKEN:
           if (pos >= line.size()) {
-            logError(std::cerr, "Unterminated string", std::string{line.data()},
+            logError(std::cerr, "Unterminated string", std::string{line.c_str()},
                      lineno, pos);
-            return nullptr;
+            throw TokenizerException("Unterminated string", lineno, pos);
           } else if (curr == '"') {
             // string end
             tokbuf.push_back(curr);
@@ -129,11 +129,11 @@ TokenList* Tokenizer::tokenize(std::basic_istream<char>& lines) {
           } else {
             logError(std::cerr, "Invalid token", std::string{line.data()},
                      lineno, pos);
-            return nullptr;
+            throw TokenizerException("Invalid token " + line, lineno, pos);
           }
           break;
         case State::END_TOKEN:
-          tokens->push_back(Token{tokbuf});
+          tokens.push_back(Token{tokbuf});
           tokbuf.clear();
           state = State::START_TOKEN;
           break;
@@ -141,9 +141,9 @@ TokenList* Tokenizer::tokenize(std::basic_istream<char>& lines) {
           break;
       }
     }
-    tokens->push_back("EOL");
+    tokens.push_back("EOL");
   }
-  tokens->push_back("EOF");
+  tokens.push_back("EOF");
 
   return tokens;
 }

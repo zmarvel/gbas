@@ -12,14 +12,14 @@ using Token = std::string;
 
 class TokenizerException : std::exception {
  public:
-  TokenizerException(const char* msg) { this->msg = msg; }
+  TokenizerException(const char* msg, int line, int col) : mMsg{msg} {}
 
-  TokenizerException(const std::string& msg) { this->msg = msg; }
+  TokenizerException(const std::string& msg, int line, int col) : mMsg{msg} {}
 
-  virtual const char* what() const throw() { return msg.c_str(); };
+  virtual const char* what() const throw() { return mMsg.c_str(); };
 
  private:
-  std::string msg;
+  std::string mMsg;
 };
 
 using TokenList = std::vector<Token>;
@@ -27,7 +27,7 @@ using TokenList = std::vector<Token>;
 const int MAX_LINE_LEN = 128;
 class Tokenizer {
  public:
-  TokenList* tokenize(std::basic_istream<char>& lines);
+  TokenList tokenize(std::basic_istream<char>& lines);
   static bool isReserved(Token tok);
   static bool isOperator(char c);
   static bool isAlphaNumeric(char c);

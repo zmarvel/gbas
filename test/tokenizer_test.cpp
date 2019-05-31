@@ -20,13 +20,13 @@ BOOST_AUTO_TEST_CASE(tokenizer_test_tokenize0) {
   std::stringstream stream;
   stream << input;
   auto tokens = tokenizer.tokenize(stream);
-  BOOST_REQUIRE_EQUAL(tokens->size(), 6);
-  BOOST_REQUIRE_EQUAL(tokens->at(0), Token("add"));
-  BOOST_REQUIRE_EQUAL(tokens->at(1), Token("a"));
-  BOOST_REQUIRE_EQUAL(tokens->at(2), Token(","));
-  BOOST_REQUIRE_EQUAL(tokens->at(3), Token("32"));
-  BOOST_REQUIRE_EQUAL(tokens->at(4), Token("EOL"));
-  BOOST_REQUIRE_EQUAL(tokens->at(5), Token("EOF"));
+  BOOST_REQUIRE_EQUAL(tokens.size(), 6);
+  BOOST_REQUIRE_EQUAL(tokens.at(0), Token("add"));
+  BOOST_REQUIRE_EQUAL(tokens.at(1), Token("a"));
+  BOOST_REQUIRE_EQUAL(tokens.at(2), Token(","));
+  BOOST_REQUIRE_EQUAL(tokens.at(3), Token("32"));
+  BOOST_REQUIRE_EQUAL(tokens.at(4), Token("EOL"));
+  BOOST_REQUIRE_EQUAL(tokens.at(5), Token("EOF"));
 }
 
 class TokenizerTestFile {
@@ -50,16 +50,16 @@ class TokenizerTestFile {
     }
     auto tokenizer = Tokenizer{};
     auto tokens = tokenizer.tokenize(stream);
-    auto token = tokens->begin();
+    auto token = tokens.begin();
     for (std::string line;
-         std::getline(expectedStream, line) && (token != tokens->end());
+         std::getline(expectedStream, line) && (token != tokens.end());
          line.clear()) {
       BOOST_REQUIRE_EQUAL(line, *token);
       token++;
     }
     BOOST_TEST(expectedStream.eof());
-    if (token != tokens->end()) {
-      BOOST_FAIL("token != tokens->end()");
+    if (token != tokens.end()) {
+      BOOST_FAIL("token != tokens.end()");
     }
   }
 
