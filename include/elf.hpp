@@ -38,6 +38,8 @@ class ELF {
  public:
   ELF();
 
+  void write(std::ostream& out);
+
   /**
    * Add a symbol to the current section.
    *
@@ -49,6 +51,8 @@ class ELF {
    *   elf.h. See st_info description in elf(5).
    * @param visibility: Visibility of symbol. Values are defined in elf.h. See
    *   st_other in elf(5).
+   * @param other: Defines the corresponding section for this symbol, i.e. the
+   *   section where the actual data that this symbol points to is located.
    * @param relocatable: True if the symbol needs to be relocatable.
    *
    * @returns a reference to the symbol in its symbol table.
@@ -80,26 +84,46 @@ class ELF {
    * Add data to the .data section.
    */
   size_t addData(const std::vector<uint8_t>& data);
+  size_t dataSize();
+  size_t dataIdx() {
+    return mDataIdx;
+  }
 
   /**
    * Add data to the .rodata section.
    */
   size_t addRodata(const std::vector<uint8_t>& data);
+  size_t rodataSize();
+  size_t rodataIdx() {
+    return mRodataIdx;
+  }
 
   /**
    * Add data to the .bss section.
    */
   size_t addBss(const std::vector<uint8_t>& data);
+  size_t bssSize();
+  size_t bssIdx() {
+    return mBssIdx;
+  }
 
   /**
    * Add data to the .text section.
    */
   size_t addText(const std::vector<uint8_t>& data);
+  size_t textSize();
+  size_t textIdx() {
+    return mTextIdx;
+  }
 
   /**
    * Add data to the .init section.
    */
   size_t addInit(const std::vector<uint8_t>& data);
+  size_t initSize();
+  size_t initIdx() {
+    return mInitIdx;
+  }
 
   /**
    * Change the current section. If a section with the given name does not
@@ -143,8 +167,6 @@ class ELF {
      uint16_t      e_shstrndx;
      } ElfN_Ehdr;
      */
-
-  void write(std::ostream out);
 
   /**
    * Helper for looking up a section's name in the section name string table

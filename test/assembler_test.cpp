@@ -261,6 +261,12 @@ static void printAst(std::shared_ptr<AST::BaseNode> left, int level) {
 
 BOOST_AUTO_TEST_SUITE(assembler_evaluation);
 
+class InvalidNode : public AST::Node<AST::NodeType::INVALID> {
+ public:
+  InvalidNode() {}
+  virtual void accept(AST::AbstractNodeVisitor& visitor) override {}
+};
+
 /*
  * Let's test some basic cases, i.e. things that should evaluate to the same
  * expression.
@@ -305,7 +311,7 @@ BOOST_AUTO_TEST_CASE(assembler_test_evaluate_basic) {
   }
 
   {  // invalid node throws exception
-    auto lnode = std::make_shared<AST::Node<AST::NodeType::INVALID>>();
+    auto lnode = std::make_shared<InvalidNode>();
     BOOST_CHECK_THROW(Assembler::evaluate(lnode), AssemblerException);
   }
 }

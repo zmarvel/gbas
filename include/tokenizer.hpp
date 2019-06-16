@@ -12,14 +12,16 @@ using Token = std::string;
 
 class TokenizerException : std::exception {
  public:
-  TokenizerException(const char* msg, int line, int col) : mMsg{msg} {}
+  TokenizerException(const char* msg, int line, int col) : mMsg{msg}, mLine{line}, mCol{col} {}
 
-  TokenizerException(const std::string& msg, int line, int col) : mMsg{msg} {}
+  TokenizerException(const std::string& msg, int line, int col) : mMsg{msg}, mLine{line}, mCol{col} {}
 
   virtual const char* what() const throw() { return mMsg.c_str(); };
 
  private:
   std::string mMsg;
+  int mLine;
+  int mCol;
 };
 
 using TokenList = std::vector<Token>;

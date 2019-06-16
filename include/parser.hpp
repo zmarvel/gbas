@@ -41,6 +41,7 @@ enum class InstructionType {
 
   JR,
   RET,
+  RETI,
   JP,
   CALL,
   RST,
@@ -83,8 +84,33 @@ enum class NodeType {
   INVALID,
 };
 
+struct AbstractNodeVisitor;
+
 struct BaseNode {
-  virtual NodeType id() const { return NodeType::INVALID; };
+  virtual ~BaseNode() {}
+  //virtual NodeType id() const { return NodeType::INVALID; };
+  virtual NodeType id() const = 0;
+  virtual void accept(AbstractNodeVisitor& visitor) = 0;
+};
+
+class Root;
+class BaseInstruction;
+class BaseRegister;
+class BaseDRegister;
+class Label;
+struct Number;
+class BaseBinaryOp;
+class BaseUnaryOp;
+
+struct AbstractNodeVisitor {
+  virtual void visit(Root& node) = 0;
+  virtual void visit(BaseInstruction& node) = 0;
+  virtual void visit(BaseRegister& node) = 0;
+  virtual void visit(BaseDRegister& node) = 0;
+  virtual void visit(Label& node) = 0;
+  virtual void visit(Number& node) = 0;
+  virtual void visit(BaseBinaryOp& node) = 0;
+  virtual void visit(BaseUnaryOp& node) = 0;
 };
 
 template <NodeType Tnode>
@@ -97,6 +123,8 @@ class Root : public Node<NodeType::ROOT> {
   Root() : mChildren{} {}
 
   Root(std::vector<std::shared_ptr<BaseNode>> children) : mChildren{children} {}
+
+  virtual ~Root() override {}
 
   void add(std::shared_ptr<BaseNode> child) { mChildren.push_back(child); }
 
@@ -112,36 +140,81 @@ class Root : public Node<NodeType::ROOT> {
 
   size_t size() const { return mChildren.size(); }
 
+  virtual void accept(AbstractNodeVisitor& visitor) override {
+    visitor.visit(*this);
+  }
+
  private:
   std::vector<std::shared_ptr<BaseNode>> mChildren;
 };
 
 class BaseRegister : public Node<NodeType::REGISTER> {
  public:
-  virtual char reg() const = 0;
+  explicit BaseRegister(char regc) : mReg{regc} { }
+
+  virtual ~BaseRegister() override {}
+
+  constexpr char reg() const {
+    return mReg;
+  };
+
+  virtual void accept(AbstractNodeVisitor& visitor) override {
+    visitor.visit(*this);
+  }
+
+ private:
+  char mReg;
 };
 
 template <char regc>
 struct Register : public BaseRegister {
- public:
-  virtual char reg() const override { return regc; }
+  public:
+    Register() : BaseRegister{regc} { }
 };
 
 class BaseDRegister : public Node<NodeType::DREGISTER> {
  public:
-  virtual std::string reg() const = 0;
+  explicit BaseDRegister(char r1, char r2) : mReg1{r1}, mReg2{r2} { }
+
+  virtual ~BaseDRegister() override {}
+
+  const std::string reg() const {
+    return std::string{reg1(), reg2()};
+  };
+
+  char reg1() const {
+    return mReg1;
+  }
+
+  char reg2() const {
+    return mReg2;
+  }
+
+  virtual void accept(AbstractNodeVisitor& visitor) override {
+    visitor.visit(*this);
+  }
+
+  private:
+    char mReg1, mReg2;
 };
 
-template <char reg1, char reg2>
-struct DRegister : public BaseDRegister {
-  virtual std::string reg() const override { return std::string{reg1, reg2}; }
+template <char r1, char r2>
+class DRegister : public BaseDRegister {
+  public:
+  DRegister() : BaseDRegister{r1, r2} { }
 };
 
 class Label : public Node<NodeType::LABEL> {
  public:
   Label(const std::string& name) : mName{name} {}
 
+  virtual ~Label() override {}
+
   const std::string& name() const { return mName; }
+
+  virtual void accept(AbstractNodeVisitor& visitor) override {
+    visitor.visit(*this);
+  }
 
  private:
   std::string mName;
@@ -150,7 +223,13 @@ class Label : public Node<NodeType::LABEL> {
 struct Number : public Node<NodeType::NUMBER> {
   explicit Number(uint8_t value) : mValue{value} {}
 
+  virtual ~Number() {}
+
   uint8_t value() const { return mValue; }
+
+  virtual void accept(AbstractNodeVisitor& visitor) override {
+    visitor.visit(*this);
+  }
 
  private:
   uint8_t mValue;
@@ -168,9 +247,15 @@ class BaseBinaryOp : public Node<NodeType::BINARY_OP> {
  public:
   virtual BinaryOpType opType() const { return BinaryOpType::INVALID; }
 
+  virtual ~BaseBinaryOp() override {}
+
   std::shared_ptr<BaseNode> left() { return mL; }
 
   std::shared_ptr<BaseNode> right() { return mR; }
+
+  virtual void accept(AbstractNodeVisitor& visitor) override {
+    visitor.visit(*this);
+  }
 
  protected:
   explicit BaseBinaryOp(std::shared_ptr<BaseNode> l,
@@ -202,9 +287,15 @@ enum class UnaryOpType {
 
 class BaseUnaryOp : public Node<NodeType::UNARY_OP> {
  public:
+  virtual ~BaseUnaryOp() override {}
+
   virtual UnaryOpType opType() const { return UnaryOpType::INVALID; }
 
   std::shared_ptr<BaseNode> operand() { return mRand; }
+
+  virtual void accept(AbstractNodeVisitor& visitor) override {
+    visitor.visit(*this);
+  }
 
  protected:
   explicit BaseUnaryOp(std::shared_ptr<BaseNode> rand) : mRand{rand} {}
@@ -225,9 +316,15 @@ using NegOp = UnaryOp<UnaryOpType::NEG>;
 
 class BaseInstruction : public Node<NodeType::INSTRUCTION> {
  public:
+  virtual ~BaseInstruction() {}
+
   InstructionType type() const { return mType; }
 
   virtual int nOperands() const = 0;
+
+  virtual void accept(AbstractNodeVisitor& visitor) override {
+    visitor.visit(*this);
+  }
 
  protected:
   BaseInstruction() : mType{InstructionType::INVALID} {}

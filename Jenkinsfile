@@ -17,6 +17,11 @@ pipeline {
                 sh 'make CHECK_OPTIONS="--log_format=JUNIT --log_level=all" CHECK_LOG=test_log_gcc.xml check'
             }
         }
+        stage('Test GCC + sanitizers') {
+            steps {
+                sh 'CXXFLAGS="-fsanitize" LDFLAGS="-lasan" make CHECK_OPTIONS="--log_format=JUNIT --log_level=all" CHECK_LOG=test_log_gcc.xml check'
+            }
+        }
         stage('Build Clang') {
             steps {
                 sh 'make clean'

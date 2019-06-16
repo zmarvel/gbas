@@ -184,7 +184,7 @@ void ELF::computeSectionOffsets() {
   }
 }
 
-void ELF::write(std::ostream out) {
+void ELF::write(std::ostream& out) {
   computeSectionOffsets();
   // Write section headers
   for (auto itHdr = mSectionHeaders.begin(); itHdr != mSectionHeaders.end();
@@ -318,6 +318,10 @@ size_t ELF::addData(const std::vector<uint8_t>& data) {
   return data.size();
 }
 
+size_t ELF::dataSize() {
+  return mData.size();
+}
+
 size_t ELF::addRodata(const std::vector<uint8_t>& data) {
   size_t start = mRodata.capacity();
   mRodata.resize(mRodata.capacity() + data.size());
@@ -326,6 +330,10 @@ size_t ELF::addRodata(const std::vector<uint8_t>& data) {
   }
   mSectionHeaders.at(mRodataIdx).sh_size += data.size();
   return data.size();
+}
+
+size_t ELF::rodataSize() {
+  return mRodata.size();
 }
 
 size_t ELF::addBss(const std::vector<uint8_t>& data) {
@@ -338,6 +346,10 @@ size_t ELF::addBss(const std::vector<uint8_t>& data) {
   return data.size();
 }
 
+size_t ELF::bssSize() {
+  return mBss.size();
+}
+
 size_t ELF::addText(const std::vector<uint8_t>& data) {
   size_t start = mText.capacity();
   mText.resize(mText.capacity() + data.size());
@@ -348,6 +360,10 @@ size_t ELF::addText(const std::vector<uint8_t>& data) {
   return data.size();
 }
 
+size_t ELF::textSize() {
+  return mText.size();
+}
+
 size_t ELF::addInit(const std::vector<uint8_t>& data) {
   size_t start = mInit.capacity();
   mInit.resize(mInit.capacity() + data.size());
@@ -356,6 +372,10 @@ size_t ELF::addInit(const std::vector<uint8_t>& data) {
   }
   mSectionHeaders.at(mInitIdx).sh_size += data.size();
   return data.size();
+}
+
+size_t ELF::initSize() {
+  return mInit.size();
 }
 
 Elf32_Shdr& ELF::setSection(std::string name, uint32_t addr) {

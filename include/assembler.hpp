@@ -1,6 +1,19 @@
 
 
+#include <fstream>
+
 #include "parser.hpp"
+#include "elf.hpp"
+
+namespace GBAS {
+  enum class SectionType {
+    DATA,
+    RODATA,
+    BSS,
+    TEXT,
+    INIT,
+  };
+}
 
 /**
  * The assembler takes an AST as input and outputs an object file. It should
@@ -8,6 +21,16 @@
  */
 class Assembler {
  public:
+  explicit Assembler(std::shared_ptr<AST::Root> ast, std::ofstream out);
+
+  void assemble();
+
+  void assembleInstruction(GBAS::ELF& elf, AST::BaseInstruction& instr);
+  std::vector<uint8_t> instructionNone(AST::Instruction0& instr0);
+  std::vector<uint8_t> instructionR(AST::Instruction1& instr1, const AST::BaseRegister& reg);
+  std::vector<uint8_t> instructionRA(AST::Instruction1& instr1, const AST::BaseRegister& reg);
+  std::vector<uint8_t> instructionD(AST::Instruction1& instr1, const AST::BaseDRegister& reg);
+
   /**
    * Given any type of node, evaluate it and its descendents, recursively.
    *
@@ -24,7 +47,7 @@ class Assembler {
    * @throws AssemblerException if any child is invalid.
    */
   static std::shared_ptr<AST::BaseInstruction> evaluateInstruction(
-      std::shared_ptr<AST::BaseInstruction> node);
+      AST::BaseInstruction& node);
 
   /**
    * Given a BaseBinaryOp node, evaluate it and its children where possible.
@@ -43,6 +66,13 @@ class Assembler {
    */
   static std::shared_ptr<AST::BaseNode> evaluateUnaryOp(
       std::shared_ptr<AST::BaseUnaryOp> node);
+
+ private:
+  std::shared_ptr<AST::Root> mAst;
+  std::ofstream mOut;
+
+  GBAS::SectionType mCurrSectionType;
+  //std::vector<std::pair<std::string, size_t>> mLabels;
 };
 
 class AssemblerException : std::exception {
