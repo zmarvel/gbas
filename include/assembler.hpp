@@ -47,7 +47,7 @@ class Assembler {
    * @throws AssemblerException if any child is invalid.
    */
   static std::shared_ptr<AST::BaseInstruction> evaluateInstruction(
-      AST::BaseInstruction& node);
+      std::shared_ptr<AST::BaseInstruction> node);
 
   /**
    * Given a BaseBinaryOp node, evaluate it and its children where possible.

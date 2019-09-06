@@ -459,7 +459,7 @@ BOOST_AUTO_TEST_CASE(assembler_test_evaluateInstruction) {
   {  // instruction with no operands should not change
     auto linstr =
         std::make_shared<AST::Instruction0>(AST::InstructionType::NOP);
-    auto rinstr = Assembler::evaluateInstruction(*linstr);
+    auto rinstr = Assembler::evaluateInstruction(linstr);
     BOOST_CHECK(isAstEqual(linstr, rinstr));
   }
 
@@ -467,7 +467,7 @@ BOOST_AUTO_TEST_CASE(assembler_test_evaluateInstruction) {
     auto lrand = std::make_shared<AST::Register<'b'>>();
     auto linstr =
         std::make_shared<AST::Instruction1>(AST::InstructionType::INC, lrand);
-    auto rinstr = Assembler::evaluateInstruction(*linstr);
+    auto rinstr = Assembler::evaluateInstruction(linstr);
     BOOST_CHECK(isAstEqual(linstr, rinstr));
   }
 
@@ -476,13 +476,13 @@ BOOST_AUTO_TEST_CASE(assembler_test_evaluateInstruction) {
     auto lright = std::make_shared<AST::Label>("asdf");
     auto linstr = std::make_shared<AST::Instruction2>(AST::InstructionType::ADD,
                                                       lleft, lright);
-    auto rinstr = Assembler::evaluateInstruction(*linstr);
+    auto rinstr = Assembler::evaluateInstruction(linstr);
     BOOST_CHECK(isAstEqual(linstr, rinstr));
   }
 
   {  // invalid instruction should throw
     auto linstr = std::make_shared<InvalidInstruction>();
-    BOOST_CHECK_THROW(Assembler::evaluateInstruction(*linstr),
+    BOOST_CHECK_THROW(Assembler::evaluateInstruction(linstr),
                       AssemblerException);
   }
 
@@ -491,7 +491,7 @@ BOOST_AUTO_TEST_CASE(assembler_test_evaluateInstruction) {
     auto lop = std::make_shared<AST::NegOp>(lrand);
     auto linstr =
         std::make_shared<AST::Instruction1>(AST::InstructionType::DEC, lop);
-    auto rinstr = Assembler::evaluateInstruction(*linstr);
+    auto rinstr = Assembler::evaluateInstruction(linstr);
     BOOST_CHECK(!isAstEqual(linstr, rinstr));
     auto rinstr1 = std::dynamic_pointer_cast<AST::Instruction1>(rinstr);
     BOOST_CHECK(rinstr1->operand()->id() == AST::NodeType::NUMBER);
@@ -505,7 +505,7 @@ BOOST_AUTO_TEST_CASE(assembler_test_evaluateInstruction) {
     auto lrand = std::make_shared<AST::MultOp>(lleft, lright);
     auto linstr =
         std::make_shared<AST::Instruction1>(AST::InstructionType::INC, lrand);
-    auto rinstr = Assembler::evaluateInstruction(*linstr);
+    auto rinstr = Assembler::evaluateInstruction(linstr);
     BOOST_CHECK(!isAstEqual(linstr, rinstr));
     auto rinstr1 = std::dynamic_pointer_cast<AST::Instruction1>(rinstr);
     BOOST_CHECK(rinstr1->operand()->id() == AST::NodeType::NUMBER);
@@ -522,7 +522,7 @@ BOOST_AUTO_TEST_CASE(assembler_test_evaluateInstruction) {
     auto l2op = std::make_shared<AST::DivOp>(l2left, l2right);
     auto linstr = std::make_shared<AST::Instruction2>(AST::InstructionType::ADD,
                                                       l1op, l2op);
-    auto rinstr = Assembler::evaluateInstruction(*linstr);
+    auto rinstr = Assembler::evaluateInstruction(linstr);
     BOOST_CHECK(!isAstEqual(linstr, rinstr));
     auto rinstr2 = std::dynamic_pointer_cast<AST::Instruction2>(rinstr);
     BOOST_CHECK(rinstr2->left()->id() == AST::NodeType::NUMBER);
@@ -535,8 +535,9 @@ BOOST_AUTO_TEST_CASE(assembler_test_evaluateInstruction) {
 }
 
 BOOST_AUTO_TEST_CASE(assembler_test_evaluate) {
-  {  // Now let's evaluate a more interesting "program" that should not get
-    // modified during evaluation
+  // Now let's evaluate a more interesting "program" that should not get
+  // modified during evaluation
+  {
     auto instr0 =
         std::make_shared<AST::Instruction0>(AST::InstructionType::NOP);
     auto instr1 = std::make_shared<AST::Instruction1>(
@@ -552,7 +553,8 @@ BOOST_AUTO_TEST_CASE(assembler_test_evaluate) {
     BOOST_CHECK(isAstEqual(lroot, rroot));
   }
 
-  {  // Now a "program" that SHOULD get modified during evaluation
+  // Now a "program" that SHOULD get modified during evaluation
+  {
     auto linstr0 =
         std::make_shared<AST::Instruction0>(AST::InstructionType::NOP);
     auto linstr1rand = std::make_shared<AST::Number>(static_cast<uint8_t>(-42));

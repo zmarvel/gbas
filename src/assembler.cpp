@@ -782,7 +782,7 @@ std::shared_ptr<BaseNode> Assembler::evaluate(std::shared_ptr<BaseNode> node) {
     } break;
     case NodeType::INSTRUCTION: {
       auto instr = std::dynamic_pointer_cast<BaseInstruction>(node);
-      return evaluateInstruction(*instr);
+      return evaluateInstruction(instr);
     } break;
     case NodeType::REGISTER: {
       auto reg = std::dynamic_pointer_cast<BaseRegister>(node);
@@ -818,21 +818,21 @@ std::shared_ptr<BaseNode> Assembler::evaluate(std::shared_ptr<BaseNode> node) {
 }
 
 std::shared_ptr<BaseInstruction> Assembler::evaluateInstruction(
-    BaseInstruction& node) {
-  switch (node.nOperands()) {
+    std::shared_ptr<BaseInstruction> node) {
+  switch (node->nOperands()) {
     case 0:
-      return std::shared_ptr<BaseInstruction>(&node);
+      return node;
       break;
     case 1: {
       // auto instr1 = std::dynamic_pointer_cast<Instruction1>(node);
-      auto& instr1 = dynamic_cast<Instruction1&>(node);
-      return std::make_shared<Instruction1>(instr1.type(),
-                                            evaluate(instr1.operand()));
+      auto instr1 = std::dynamic_pointer_cast<Instruction1>(node);
+      return std::make_shared<Instruction1>(instr1->type(),
+                                            evaluate(instr1->operand()));
     } break;
     case 2: {
-      auto& instr2 = dynamic_cast<Instruction2&>(node);
+      auto instr2 = std::dynamic_pointer_cast<Instruction2>(node);
       return std::make_shared<Instruction2>(
-          instr2.type(), evaluate(instr2.left()), evaluate(instr2.right()));
+          instr2->type(), evaluate(instr2->left()), evaluate(instr2->right()));
     } break;
     default:
       throw AssemblerException("Invalid number of Instruction operands");
