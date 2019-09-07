@@ -5,40 +5,11 @@
 #include <numeric>
 
 #include "elf.hpp"
+#include "elf_wrapper.hpp"
 
 using namespace GBAS;
 
 BOOST_AUTO_TEST_SUITE(elf);
-
-class ELFWrapper : public ELF {
- public:
-  ELFWrapper() : ELF{} {}
-
-  Elf32_Ehdr& getHeader() { return mHeader; }
-  uint32_t getSectionNamesIdx() { return mSectionNamesIdx; }
-  StringTable& getSectionNames() { return mSectionNames; }
-  uint32_t getStringTableIdx() { return mStringTableIdx; }
-  StringTable& getStringTable() { return mStringTable; }
-  std::vector<SymbolTable>& getSymbolTables() { return mSymbolTables; }
-  std::vector<RelocationSection>& getRelocationSections() {
-    return mRelocationSections;
-  }
-  SectionHeaderTable& getSectionHeaders() { return mSectionHeaders; }
-  uint16_t getCurrSymTabIdx() { return mCurrSymTab; }
-
-  std::vector<uint8_t>& getData() { return mData; }
-  uint32_t getDataIdx() { return mDataIdx; }
-  std::vector<uint8_t>& getRodata() { return mRodata; }
-  uint32_t getRodataIdx() { return mRodataIdx; }
-  std::vector<uint8_t>& getBss() { return mBss; }
-  uint32_t getBssIdx() { return mBssIdx; }
-  std::vector<uint8_t>& getText() { return mText; }
-  uint32_t getTextIdx() { return mTextIdx; }
-  std::vector<uint8_t>& getInit() { return mInit; }
-  uint32_t getInitIdx() { return mInitIdx; }
-
-  std::unordered_set<std::string>& getSymbolNames() { return mSymbolNames; }
-};
 
 BOOST_AUTO_TEST_CASE(elf_test_constructor) {
   ELFWrapper elf{};
@@ -76,7 +47,7 @@ BOOST_AUTO_TEST_CASE(elf_test_constructor) {
   // This is 0 in the beginning of the constructor, but should be 2 after
   // adding the two string tables.
   // TODO and eventuall rodata, etc.
-  BOOST_CHECK_EQUAL(elfHeader.e_shnum, 7);
+  BOOST_CHECK_EQUAL(elfHeader.e_shnum, 9);
 
   StringTable& sectionNames = elf.getSectionNames();
   SectionHeaderTable& sectionHeaders = elf.getSectionHeaders();
@@ -198,6 +169,23 @@ BOOST_AUTO_TEST_CASE(elf_test_constructor) {
     BOOST_CHECK_EQUAL(hdr.sh_addralign, 0);
     BOOST_CHECK_EQUAL(hdr.sh_entsize, 0);
   }
+
+  // Test the symbol table
+  {
+    BOOST_CHECK_EQUAL(sectionNames.at(7), "symtab");
+    Elf32_Shdr& hdr = sectionHeaders.at(7);
+    BOOST_CHECK_EQUAL(hdr.sh_name, 7);
+    BOOST_CHECK_EQUAL(hdr.sh_type, SHT_SYMTAB);
+    BOOST_CHECK_EQUAL(hdr.sh_flags, SHF_ALLOC);
+    BOOST_CHECK_EQUAL(hdr.sh_addr, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_offset, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_size, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_link, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_info, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_addralign, 0);
+    BOOST_CHECK_EQUAL(hdr.sh_entsize, sizeof(Elf32_Sym));
+  }
+
 }
 
 BOOST_AUTO_TEST_CASE(elf_test_addString) {
@@ -213,9 +201,10 @@ BOOST_AUTO_TEST_CASE(elf_test_addString) {
 BOOST_AUTO_TEST_CASE(elf_test_addSectionName) {
   ELFWrapper elf{};
 
+  size_t prevNames = elf.getSectionNames().size();
   elf.addSectionName("msection1");
-  BOOST_CHECK_EQUAL(elf.getSectionNames().size(), 8);
-  BOOST_CHECK_EQUAL(elf.getSectionNames().at(7), "msection1");
+  BOOST_CHECK_EQUAL(elf.getSectionNames().size(), prevNames+1);
+  BOOST_CHECK_EQUAL(elf.getSectionNames().at(prevNames), "msection1");
   BOOST_CHECK_EQUAL(
       elf.getSectionHeaders().at(elf.getSectionNamesIdx()).sh_size,
       std::accumulate(elf.getSectionNames().begin(),
@@ -266,84 +255,6 @@ BOOST_AUTO_TEST_CASE(elf_test_addSectionHeader) {
   }
 }
 
-BOOST_AUTO_TEST_CASE(elf_test_setSection) {
-  ELFWrapper elf{};
-
-  // Attempting to a string table section should fail
-  { BOOST_CHECK_THROW(elf.setSection("strtab"), ELFException); }
-
-  // Changing to a section name that doesn't exist should create a new symbol
-  // table and a new relocation table
-  auto prevShNum = elf.getSectionHeaders().size();
-  {
-    auto& hdr = elf.setSection("msection");
-
-    // Check that two new section headers have been added
-    BOOST_CHECK_EQUAL(elf.getSectionHeaders().size(), prevShNum + 2);
-    BOOST_CHECK_EQUAL(elf.getHeader().e_shnum, prevShNum + 2);
-
-    BOOST_CHECK_EQUAL(hdr.sh_name, prevShNum);
-    BOOST_CHECK_EQUAL(hdr.sh_type, SHT_SYMTAB);
-    BOOST_CHECK_EQUAL(hdr.sh_flags, 0);
-    BOOST_CHECK_EQUAL(hdr.sh_addr, 0);
-    BOOST_CHECK_EQUAL(hdr.sh_offset, 0);
-    BOOST_CHECK_EQUAL(hdr.sh_size, sizeof(Elf32_Sym));
-    BOOST_CHECK_EQUAL(hdr.sh_link, elf.getStringTableIdx());
-    BOOST_CHECK_EQUAL(hdr.sh_info, 0);
-    BOOST_CHECK_EQUAL(hdr.sh_addralign, 0);
-    BOOST_CHECK_EQUAL(hdr.sh_entsize, sizeof(Elf32_Sym));
-
-    // Check that the list of symbol tables actually grew
-    BOOST_CHECK_EQUAL(elf.getSymbolTables().size(), 1);
-
-    // Check that the null entry got added at the beginning of the table
-    auto& tab = elf.getSymbolTables().at(0);
-    BOOST_CHECK_EQUAL(tab.size(), 1);
-    auto& nullEnt = tab.at(0);
-    char* pNullEnt = reinterpret_cast<char*>(&nullEnt);
-    for (size_t i = 0; i < sizeof(nullEnt); i++) {
-      BOOST_CHECK_EQUAL(pNullEnt[i], 0);
-    }
-
-    // Check that the list of relocation sections actually grew
-    BOOST_CHECK_EQUAL(elf.getRelocationSections().size(), 1);
-
-    // Now check the relocation section's header
-    auto& relHdr = elf.getSectionHeaders().at(prevShNum + 1);
-    BOOST_CHECK_EQUAL(relHdr.sh_name, prevShNum + 1);
-    BOOST_CHECK_EQUAL(relHdr.sh_type, SHT_REL);
-    BOOST_CHECK_EQUAL(relHdr.sh_flags, 0);
-    BOOST_CHECK_EQUAL(relHdr.sh_addr, 0);
-    BOOST_CHECK_EQUAL(relHdr.sh_offset, 0);
-    BOOST_CHECK_EQUAL(relHdr.sh_size, 0);
-    // index of msection shdr
-    BOOST_CHECK_EQUAL(relHdr.sh_link, prevShNum);
-    BOOST_CHECK_EQUAL(relHdr.sh_info, prevShNum);
-    BOOST_CHECK_EQUAL(relHdr.sh_addralign, 0);
-    BOOST_CHECK_EQUAL(relHdr.sh_entsize, sizeof(Elf32_Rel));
-
-    // Check that the names got added to the section names string table
-    BOOST_CHECK_EQUAL(elf.getSectionNames().size(), prevShNum + 2);
-    BOOST_CHECK_EQUAL(elf.getSectionNames().at(prevShNum), "msection");
-    BOOST_CHECK_EQUAL(elf.getSectionNames().at(prevShNum + 1), "relmsection");
-
-    BOOST_CHECK_EQUAL(elf.getCurrSymTabIdx(), prevShNum);
-  }
-
-  // Changing to an existing section should not create any new sections
-  {
-    elf.setSection("msection");
-    BOOST_CHECK_EQUAL(elf.getCurrSymTabIdx(), prevShNum);
-    BOOST_CHECK_EQUAL(elf.getSymbolTables().size(), 1);
-    BOOST_CHECK_EQUAL(elf.getSectionHeaders().size(), prevShNum + 2);
-    BOOST_CHECK_EQUAL(elf.getHeader().e_shnum, prevShNum + 2);
-    BOOST_CHECK_EQUAL(elf.getRelocationSections().size(), 1);
-    BOOST_CHECK_EQUAL(elf.getSectionNames().size(), prevShNum + 2);
-  }
-
-  // TODO what are valid section names? Invalid ones should fail
-}
-
 BOOST_AUTO_TEST_CASE(elf_test_addSymbol) {
   ELFWrapper elf{};
 
@@ -351,17 +262,14 @@ BOOST_AUTO_TEST_CASE(elf_test_addSymbol) {
   // table should throw an exception
   {
     // elf.addSymbol("asdf", 0, 0, 0, 0, 1, false);
-    BOOST_CHECK_THROW(elf.addSymbol("asdf", 0, 0, 0, 0, 1, false),
-                      ELFException);
+    //BOOST_CHECK_THROW(elf.addSymbol("asdf", 0, 0, 0, 0, 1, false),
+    //                  ELFException);
   }
 
   // TODO invalid names should fail
   // TODO invalid sizes should fail
   // TODO invalid types should fail
   // TODO invalid other should fail
-
-  // Prepare to really define some symbols now
-  elf.setSection("msection");
 
   // Attempting to redefine a symbol should throw an exception
   {

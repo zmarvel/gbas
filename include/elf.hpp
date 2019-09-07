@@ -1,4 +1,7 @@
 
+#ifndef GBAS_ELF_H
+#define GBAS_ELF_H
+
 #include <string.h>
 #include <string>
 #include <unordered_set>
@@ -174,6 +177,9 @@ class ELF {
    */
   std::string& getSectionName(size_t sidx);
 
+  /**
+   * ELF file header.
+   */
   Elf32_Ehdr mHeader;
 
   /**
@@ -181,23 +187,59 @@ class ELF {
    * mSectionHeaders.
    */
   uint32_t mSectionNamesIdx;
+
+  /**
+   * List of section names.
+   */
   StringTable mSectionNames;
 
   /**
    * Index of the string table's section header in mSectionHeaders.
    */
   uint32_t mStringTableIdx;
+
+  /**
+   * Vector of strings that will turn into the string table.
+   */
   StringTable mStringTable;
 
+  /**
+   * Vector of symbol tables.
+   */
   std::vector<SymbolTable> mSymbolTables;
+
+  /**
+   * Vector of relocation tables.
+   */
   std::vector<RelocationSection> mRelocationSections;
 
+  /**
+   * Vector of section headers.
+   */
   SectionHeaderTable mSectionHeaders;
 
   /**
    * Index of the current symbol table's section header in mSectionHeaders.
    */
   uint16_t mCurrSymTab;
+
+  /**
+   * Index of the relocation section's header in mSectionHeaders.
+   *
+   * TODO: There should a relocation table for every section (.text, .rodata,
+   * etc.)
+   */
+  uint16_t mCurrRelocSec;
+
+  /**
+   * Index of the current table in mSymbolTables.
+   */
+  uint32_t mSymbolTableIdx;
+
+  /**
+   * Index of the current relocation table in mRelocationSections.
+   */
+  uint32_t mRelocationSectionIdx;
 
   /**
    * Initialized data in program memory.
@@ -209,24 +251,40 @@ class ELF {
    * Read-only (const) data.
    */
   std::vector<uint8_t> mRodata;
+
+  /**
+   * Index of the .rodata section header in mSectionHeaders.
+   */
   uint32_t mRodataIdx;
 
   /**
    * Uninitialized data in program memory.
    */
   std::vector<uint8_t> mBss;
+
+  /**
+   * Index of the .bss section header in mSectionHeaders.
+   */
   uint32_t mBssIdx;
 
   /**
    * Executable instructions.
    */
   std::vector<uint8_t> mText;
+
+  /**
+   * Index of the .text section header in mSectionHeaders.
+   */
   uint32_t mTextIdx;
 
   /**
    * Executable instructions to be run during initialization.
    */
   std::vector<uint8_t> mInit;
+
+  /**
+   * Index of the .init section header in mSectionHeaders.
+   */
   uint32_t mInitIdx;
 
   /**
@@ -250,3 +308,5 @@ class ELFException : std::exception {
 };
 
 };  // namespace GBAS
+
+#endif // GBAS_ELF_H

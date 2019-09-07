@@ -63,6 +63,12 @@ enum class InstructionType {
   INVALID,
 };
 
+enum class DirectiveType {
+  SECTION,
+
+  INVALID,
+};
+
 /* Types of Node:
  * - Node<Instruction<args>>
  * - Node<Register<reg>>
@@ -78,6 +84,7 @@ enum class NodeType {
   REGISTER,
   DREGISTER,
   LABEL,
+  DIRECTIVE,
   NUMBER,
   BINARY_OP,
   UNARY_OP,
@@ -98,6 +105,7 @@ class BaseInstruction;
 class BaseRegister;
 class BaseDRegister;
 class Label;
+class Directive;
 struct Number;
 class BaseBinaryOp;
 class BaseUnaryOp;
@@ -108,6 +116,7 @@ struct AbstractNodeVisitor {
   virtual void visit(BaseRegister& node) = 0;
   virtual void visit(BaseDRegister& node) = 0;
   virtual void visit(Label& node) = 0;
+  virtual void visit(Directive& node) = 0;
   virtual void visit(Number& node) = 0;
   virtual void visit(BaseBinaryOp& node) = 0;
   virtual void visit(BaseUnaryOp& node) = 0;
@@ -219,6 +228,38 @@ class Label : public Node<NodeType::LABEL> {
  private:
   std::string mName;
 };
+
+class Directive : public Node<NodeType::DIRECTIVE> {
+ public:
+  // Don't parse directive operands
+  using OperandList = std::vector<Token>;
+
+  Directive(DirectiveType type) : mType{type} {}
+
+  Directive(DirectiveType type, OperandList operands)
+    : mType{type}
+    , mOperands{operands}
+    {}
+
+  virtual ~Directive() override {}
+
+  DirectiveType type() const {
+    return mType;
+  }
+
+  OperandList operands() const {
+    return mOperands;
+  }
+
+  virtual void accept(AbstractNodeVisitor& visitor) override {
+    visitor.visit(*this);
+  }
+
+ private:
+  DirectiveType mType;
+  OperandList mOperands;
+};
+
 
 struct Number : public Node<NodeType::NUMBER> {
   explicit Number(uint8_t value) : mValue{value} {}
@@ -387,6 +428,15 @@ struct InstructionProps {
 using InstructionPropsList =
     const std::array<const InstructionProps, 22 + 5 + 5 + 5 + 7>;
 
+struct DirectiveProps {
+  const std::string lexeme;
+  AST::DirectiveType type;
+  // Only support 1 form for now
+  int args;
+};
+
+using DirectivePropsList = const std::array<const DirectiveProps, 1>;
+
 /*
  * program → line* EOF ;
  *
@@ -455,8 +505,14 @@ class Parser {
   bool isMultiplication(const Token& tok);
   std::shared_ptr<AST::BaseNode> unary();
   std::shared_ptr<AST::BaseNode> primary();
+
+  /**
+   * Convert the next token into a Label node. Assumes that the parser has
+   * already determined that the token *is* a valid label.
+   */
   std::shared_ptr<AST::BaseNode> label();
   std::shared_ptr<AST::BaseNode> number();
+  std::shared_ptr<AST::BaseNode> directive();
 
   /**
    * Read from tokens, starting at pos, until EOF is encountered.
@@ -524,11 +580,6 @@ class Parser {
   std::shared_ptr<AST::BaseNode> parseOperand(const Token& tok);
 
   /**
-   * True only if tok is an integer number.
-   */
-  static bool isNumber(const Token& tok);
-
-  /**
    * True only if tok is one of +, -, *, or /.
    */
   static bool isNumericOp(const Token& tok);
@@ -543,6 +594,17 @@ class Parser {
    * True only if tok is a valid instruction name.
    */
   static bool isInstruction(const Token& tok);
+
+  /**
+   * Search the DirectivePropsList for properties matching the given token.
+   */
+  static const DirectiveProps& findDirective(const Token& tok);
+
+  /**
+   * True only if tok starts with a period and a letter. Following that, the
+   * directive must contain only letters, numbers, and underscores.
+   */
+  static bool isDirective(const Token& tok);
 
   /**
    * True only if tok starts with a letter and, following that, contains only

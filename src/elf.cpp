@@ -7,6 +7,26 @@
 
 using namespace GBAS;
 
+#undef DEBUG_ELF
+#ifndef DEBUG_GBAS
+#define DEBUG_ELF
+#else
+#define DEBUG_ELF
+#endif
+
+#ifdef DEBUG_ELF
+#define ELF_EXCEPTION(msg) \
+  do {\
+    std::cerr << msg << std::endl; \
+    throw ELFException{msg}; \
+  } while(0)
+#else
+#define ELF_EXCEPTION(msg) \
+  do {\
+    throw ELFException{msg}; \
+  } while(0)
+#endif
+
 static const int ABIVERSION = 0;
 static const unsigned char ELF_IDENT[] = {
     EI_MAG0,
@@ -35,6 +55,7 @@ ELF::ELF()
       mRelocationSections{},
       mSectionHeaders{},
       mCurrSymTab{0},
+      mSymbolTableIdx{0},
       mData{},
       mDataIdx{0},
       mRodata{},
@@ -64,7 +85,7 @@ ELF::ELF()
   mSectionNamesIdx = mSectionHeaders.size();
   addSectionHeader(Elf32_Shdr{
       // This section's name will be first in the section names table
-      .sh_name = 0,
+      .sh_name = static_cast<uint32_t>(mSectionNames.size()),
       .sh_type = SHT_STRTAB,
       .sh_flags = 0,
       .sh_addr = 0,
@@ -81,7 +102,7 @@ ELF::ELF()
   mStringTableIdx = mSectionHeaders.size();
   addSectionHeader(Elf32_Shdr{
       // This section's name will be first in the section names table
-      .sh_name = 1,
+      .sh_name = static_cast<uint32_t>(mSectionNames.size()),
       .sh_type = SHT_STRTAB,
       .sh_flags = 0,
       .sh_addr = 0,
@@ -97,7 +118,7 @@ ELF::ELF()
   // data section
   mDataIdx = mSectionHeaders.size();
   addSectionHeader(
-      Elf32_Shdr{.sh_name = 2,
+      Elf32_Shdr{.sh_name = static_cast<uint32_t>(mSectionNames.size()),
                  .sh_type = SHT_PROGBITS,
                  .sh_flags = SHF_ALLOC | SHF_WRITE,
                  .sh_addr = 0,
@@ -113,7 +134,7 @@ ELF::ELF()
   // rodata section
   mRodataIdx = mSectionHeaders.size();
   addSectionHeader(
-      Elf32_Shdr{.sh_name = 3,
+      Elf32_Shdr{.sh_name = static_cast<uint32_t>(mSectionNames.size()),
                  .sh_type = SHT_PROGBITS,
                  .sh_flags = SHF_ALLOC,
                  .sh_addr = 0,
@@ -129,7 +150,7 @@ ELF::ELF()
   // bss section
   mBssIdx = mSectionHeaders.size();
   addSectionHeader(
-      Elf32_Shdr{.sh_name = 4,
+      Elf32_Shdr{.sh_name = static_cast<uint32_t>(mSectionNames.size()),
                  .sh_type = SHT_NOBITS,
                  .sh_flags = SHF_ALLOC | SHF_WRITE,
                  .sh_addr = 0,
@@ -145,7 +166,7 @@ ELF::ELF()
   // text section
   mTextIdx = mSectionHeaders.size();
   addSectionHeader(
-      Elf32_Shdr{.sh_name = 5,
+      Elf32_Shdr{.sh_name = static_cast<uint32_t>(mSectionNames.size()),
                  .sh_type = SHT_PROGBITS,
                  .sh_flags = SHF_ALLOC | SHF_EXECINSTR,
                  .sh_addr = 0,
@@ -161,7 +182,7 @@ ELF::ELF()
   // init section
   mInitIdx = mSectionHeaders.size();
   addSectionHeader(
-      Elf32_Shdr{.sh_name = 6,
+      Elf32_Shdr{.sh_name = static_cast<uint32_t>(mSectionNames.size()),
                  .sh_type = SHT_PROGBITS,
                  .sh_flags = SHF_ALLOC | SHF_EXECINSTR,
                  .sh_addr = 0,
@@ -173,6 +194,49 @@ ELF::ELF()
                  .sh_addralign = 0,
                  .sh_entsize = 0});
   addSectionName("init");
+
+  // symbol table
+  mCurrSymTab = mSectionHeaders.size();
+  mSymbolTableIdx = mSymbolTables.size();
+  addSectionHeader(
+      Elf32_Shdr{.sh_name = static_cast<uint32_t>(mSectionNames.size()),
+                 .sh_type = SHT_SYMTAB,
+                 .sh_flags = SHF_ALLOC,
+                 .sh_addr = 0,
+                 .sh_offset = 0,
+                 .sh_size = 0,
+                 .sh_link = 0,
+                 .sh_info = 0,
+                 .sh_addralign = 0,
+                 .sh_entsize = sizeof(Elf32_Sym)});
+  addSectionName("symtab");
+  mSymbolTables.push_back(SymbolTable{});
+  mSymbolTables.at(0).emplace_back(
+      Elf32_Sym{.st_name = 0,
+      .st_value = 0,
+      .st_size = 0,
+      .st_info = 0,
+      .st_other = 0,
+      .st_shndx = 0});
+
+  // relocation table
+  mCurrRelocSec = mSectionHeaders.size();
+  mRelocationSectionIdx = mSymbolTables.size();
+  addSectionHeader(
+      Elf32_Shdr{.sh_name = static_cast<uint32_t>(mSectionNames.size()),
+                 .sh_type = SHT_REL,
+                 .sh_flags = 0,
+                 .sh_addr = 0,
+                 .sh_offset = 0,
+                 .sh_size = 0,
+                 .sh_link = 0,
+                 .sh_info = 0,
+                 .sh_addralign = 0,
+                 .sh_entsize = sizeof(Elf32_Rel)});
+  // TODO there are relocations for all regular sections, not just one
+  addSectionName("relsymtab");
+  // TODO Is the first relocation entry null?
+
 }
 
 void ELF::computeSectionOffsets() {
@@ -226,7 +290,7 @@ Elf32_Sym& ELF::addSymbol(const std::string name, uint32_t value, uint32_t size,
                           bool relocatable) {
   Elf32_Shdr& hdr = mSectionHeaders.at(mCurrSymTab);
   if (hdr.sh_type != SHT_SYMTAB) {
-    throw ELFException("Attempting to define symbol in non-symbol table");
+    ELF_EXCEPTION("Attempting to define symbol in non-symbol table");
   }
 
   // No other symbols in this file should have the same name
@@ -234,22 +298,22 @@ Elf32_Sym& ELF::addSymbol(const std::string name, uint32_t value, uint32_t size,
     std::ostringstream builder{"Symbol "};
     builder << name;
     builder << " cannot be defined twice";
-    throw ELFException(builder.str());
+    ELF_EXCEPTION(builder.str());
   }
 
-  auto& tbl = mSymbolTables.at(hdr.sh_offset);
-
+  auto& tbl = mSymbolTables.at(mSymbolTableIdx);
   uint32_t nameIdx = mStringTable.size();
   addString(name);
   mSymbolNames.insert(name);
 
   uint32_t idx = tbl.size();
   tbl.emplace_back(Elf32_Sym{.st_name = nameIdx,
-                             .st_value = value,
-                             .st_size = size,
-                             .st_info = info,
-                             .st_other = visibility,
-                             .st_shndx = other});
+      .st_value = value,
+      .st_size = size,
+      .st_info = info,
+      .st_other = visibility,
+      .st_shndx = other});
+
   hdr.sh_size += sizeof(Elf32_Sym);
 
   // If the symbol should be relocatable, find the corresponding section of
@@ -258,13 +322,13 @@ Elf32_Sym& ELF::addSymbol(const std::string name, uint32_t value, uint32_t size,
     // Search the section header table for a header of a relocation section
     // that points back to mCurrSymTab.
     auto relocHdr =
-        std::find_if(mSectionHeaders.begin(), mSectionHeaders.end(),
-                     [&](auto h) { return h.sh_link == mCurrSymTab; });
+      std::find_if(mSectionHeaders.begin(), mSectionHeaders.end(),
+          [&](auto h) { return h.sh_link == mCurrSymTab; });
     if (relocHdr == mSectionHeaders.end()) {
-      std::ostringstream builder{"Relocatable symbol "};
-      builder << name << " requested but no corresponding relocation"
-              << " section found";
-      throw ELFException(builder.str());
+      std::ostringstream builder{};
+      builder << "Relocatable symbol " <<  name
+        << " requested but no corresponding relocation section found";
+      ELF_EXCEPTION(builder.str());
     }
 
     auto relocEntry = mRelocationSections.at(relocHdr->sh_offset);
@@ -273,7 +337,7 @@ Elf32_Sym& ELF::addSymbol(const std::string name, uint32_t value, uint32_t size,
     // relocation that should occur.
     relocEntry.emplace_back(
         Elf32_Rel{.r_offset = static_cast<Elf32_Addr>(idx * sizeof(Elf32_Sym)),
-                  .r_info = ELF32_R_SYM(idx) | ELF32_R_TYPE(R_386_32)});
+        .r_info = ELF32_R_SYM(idx) | ELF32_R_TYPE(R_386_32)});
     relocHdr->sh_size += sizeof(Elf32_Rel);
   }
 
@@ -376,84 +440,6 @@ size_t ELF::addInit(const std::vector<uint8_t>& data) {
 
 size_t ELF::initSize() {
   return mInit.size();
-}
-
-Elf32_Shdr& ELF::setSection(std::string name, uint32_t addr) {
-  // TODO only allow setting section to symbol tables. I think we can handle
-  // relocation and string tables under the hood.
-  for (size_t i = 0; i < mSectionHeaders.size(); i++) {
-    if (name == getSectionName(i)) {
-      if (mSectionHeaders.at(i).sh_type != SHT_SYMTAB) {
-        std::ostringstream builder{"Attempted to change to invalid section "};
-        builder << name;
-        throw ELFException(builder.str());
-      } else {
-        mCurrSymTab = i;
-        return mSectionHeaders.at(i);
-      }
-    }
-  }
-  // If we get here, we didn't find an existing section, so we'll create one.
-  uint32_t nameidx = static_cast<uint32_t>(mSectionNames.size());
-  mSectionNames.push_back(name);
-  // TODO while we're building the ELF file, we'll cheat a little bit and use
-  // this as an index into mSymbolTables.
-  uint32_t offset = mSymbolTables.size();
-  mSymbolTables.emplace_back(SymbolTable{});
-  // The first entry in each symbol table is a null entry
-  mSymbolTables.at(offset).emplace_back(Elf32_Sym{.st_name = 0,
-                                                  .st_value = 0,
-                                                  .st_size = 0,
-                                                  .st_info = 0,
-                                                  .st_other = 0,
-                                                  .st_shndx = 0});
-  uint32_t relOffset = mRelocationSections.size();
-  mRelocationSections.emplace_back(RelocationSection{});
-  uint32_t symtabLink = mSectionHeaders.size();
-  addSectionHeader(
-      Elf32_Shdr{.sh_name = nameidx,
-                 .sh_type = SHT_SYMTAB,
-                 // These are just symbols. .text, .rodata, and .data have
-                 // a non-zero sh_flags field.
-                 .sh_flags = 0,
-                 .sh_addr = addr,
-                 .sh_offset = offset,
-                 // Size includes the null entry at the beginning of the table.
-                 // Make sure to update this field when adding a symbol!
-                 .sh_size = sizeof(Elf32_Sym),
-                 // For a symbol table, link is the index in the section header
-                 // table of the corresponding string table's section header.
-                 .sh_link = mStringTableIdx,
-                 .sh_info = 0,
-                 // This indicates that the section has aligment constraints. 0
-                 // or 1 mean the same thing. TODO is there a problem with
-                 // aligning everything to 2 bytes?
-                 .sh_addralign = 0,
-                 .sh_entsize = sizeof(Elf32_Sym)});
-
-  uint32_t relnameidx = mSectionNames.size();
-  addSectionName("rel" + name);
-  addSectionHeader(Elf32_Shdr{
-      .sh_name = relnameidx,
-      .sh_type = SHT_REL,
-      .sh_flags = 0,
-      .sh_addr = 0,
-      .sh_offset = relOffset,
-      // TODO is there a null entry at the beginning?
-      .sh_size = 0,
-      // For a relocation section, link is the index in the section header table
-      // of the corresponding symbol table's section header.
-      .sh_link = symtabLink,
-      // Confusingly, for a relocation section, this is the same as sh_link
-      // according to https://wiki.osdev.org/ELF_Tutorial#Relocation_Sections.
-      // TODO does any other section type use this field??
-      .sh_info = symtabLink,
-      .sh_addralign = 0,
-      .sh_entsize = sizeof(Elf32_Rel)});
-
-  mCurrSymTab = symtabLink;
-
-  return mSectionHeaders.at(symtabLink);
 }
 
 std::string& ELF::getSectionName(size_t sidx) {

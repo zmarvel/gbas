@@ -12,8 +12,99 @@ namespace GBAS {
     BSS,
     TEXT,
     INIT,
+    INVALID,
+  };
+
+  static inline SectionType stringToSectionType(const std::string& str) {
+    if (str == ".data") {
+      return SectionType::DATA;
+    } else if (str == ".rodata") {
+      return SectionType::RODATA;
+    } else if (str == ".bss") {
+      return SectionType::BSS;
+    } else if (str == ".text") {
+      return SectionType::TEXT;
+    } else if (str == ".init") {
+      return SectionType::INIT;
+    } else {
+      return SectionType::INVALID;
+    }
   };
 }
+
+class AssemblerException : std::exception {
+ public:
+  AssemblerException(const char* msg) { mMsg = msg; }
+
+  AssemblerException(const std::string& msg) { mMsg = msg; }
+
+  virtual const char* what() const noexcept { return mMsg.c_str(); }
+
+ private:
+  std::string mMsg;
+};
+
+struct InstructionNone {
+  InstructionNone(AST::InstructionType typ) : typ{typ} { }
+
+  constexpr uint8_t encode() {
+    using namespace AST;
+    uint8_t opcode = 0;
+    switch (typ) {
+      case InstructionType::NOP:
+        opcode = 0x00;
+        break;
+      case InstructionType::STOP:
+        opcode = 0x10;
+        break;
+      case InstructionType::RLCA:
+        opcode = 0x07;
+        break;
+      case InstructionType::RLA:
+        opcode = 0x17;
+        break;
+      case InstructionType::DAA:
+        opcode = 0x27;
+        break;
+      case InstructionType::SCF:
+        opcode = 0x37;
+        break;
+      case InstructionType::RRCA:
+        opcode = 0x0f;
+        break;
+      case InstructionType::RRA:
+        opcode = 0x1f;
+        break;
+      case InstructionType::CPL:
+        opcode = 0x2f;
+        break;
+      case InstructionType::CCF:
+        opcode = 0x3f;
+        break;
+      case InstructionType::HALT:
+        opcode = 0x76;
+        break;
+      case InstructionType::DI:
+        opcode = 0xf3;
+        break;
+      case InstructionType::RET:
+        opcode = 0xc9;
+        break;
+      case InstructionType::RETI:
+        opcode = 0xd9;
+        break;
+      case InstructionType::EI:
+        opcode = 0xfb;
+        break;
+      default:
+        throw AssemblerException{"Unrecognized instruction"};
+        break;
+    }
+    return opcode;
+  }
+
+  AST::InstructionType typ;
+};
 
 /**
  * The assembler takes an AST as input and outputs an object file. It should
@@ -21,15 +112,83 @@ namespace GBAS {
  */
 class Assembler {
  public:
-  explicit Assembler(std::shared_ptr<AST::Root> ast, std::ofstream out);
+  explicit Assembler();
 
-  void assemble();
+  /**
+   * Parse the AST and put the generated code and symbols into the provided ELF.
+   * This function does not write the ELF object to a file.
+   *
+   * @param ast: AST root node that will be walked.
+   * @param elf: ELF object that will be modified to store generated code and
+   *   symbols.
+   *
+   * @throws AssemblerException upon invalid input.
+   */
+  void assemble(std::shared_ptr<AST::Root> ast, GBAS::ELF& elf);
 
+  GBAS::SectionType currentSectionType() { return mCurrSectionType; }
+
+  /**
+   * Helper function to dispatch and generate code for Instruction nodes.
+   *
+   * @param elf: ELF object containing the "text" section where generated code
+   *   will be added.
+   * @param instr: BaseInstruction that this function will dispatch and
+   *   generate code for.
+   *
+   * @throws AssemblerException upon invalid instruction input.
+   */
   void assembleInstruction(GBAS::ELF& elf, AST::BaseInstruction& instr);
-  std::vector<uint8_t> instructionNone(AST::Instruction0& instr0);
-  std::vector<uint8_t> instructionR(AST::Instruction1& instr1, const AST::BaseRegister& reg);
-  std::vector<uint8_t> instructionRA(AST::Instruction1& instr1, const AST::BaseRegister& reg);
-  std::vector<uint8_t> instructionD(AST::Instruction1& instr1, const AST::BaseDRegister& reg);
+
+  /**
+   * Helper function for assembling instructions with no arguments.
+   * 
+   * @param instr0: Instruction0 node.
+   * 
+   * @returns Vector of bytes representing encoded instruction.
+   *
+   * @throws AssemblerException upon invalid instruction parameter.
+   */
+  static std::vector<uint8_t> instructionNone(AST::Instruction0& instr0);
+
+  /**
+   * Helper function for assembling instructions with one argument, a register.
+   * 
+   * @param instr1: Instruction1 node.
+   * @param reg: Register node--the operand.
+   * 
+   * @returns Vector of bytes representing encoded instruction.
+   *
+   * @throws AssemblerException upon invalid instruction parameter.
+   */
+  static std::vector<uint8_t> instructionR(AST::Instruction1& instr1, const AST::BaseRegister& reg);
+
+  /**
+   * Helper function for assembling instructions with one argument, a register.
+   * Instructions dispatched to this function operate on the provided register
+   * as well as the accumulator register.
+   * 
+   * @param instr1: Instruction1 node.
+   * @param reg: Register node--the operand.
+   * 
+   * @returns Vector of bytes representing encoded instruction.
+   *
+   * @throws AssemblerException upon invalid instruction parameter.
+   */
+  static std::vector<uint8_t> instructionRA(AST::Instruction1& instr1, const AST::BaseRegister& reg);
+
+  /**
+   * Helper function for assembling instructions with one argument, a
+   * double-register.
+   * 
+   * @param instr1: Instruction1 node.
+   * @param reg: DRegister node--the operand.
+   * 
+   * @returns Vector of bytes representing encoded instruction.
+   *
+   * @throws AssemblerException upon invalid instruction parameter.
+   */
+  static std::vector<uint8_t> instructionD(AST::Instruction1& instr1, const AST::BaseDRegister& reg);
 
   /**
    * Given any type of node, evaluate it and its descendents, recursively.
@@ -68,21 +227,7 @@ class Assembler {
       std::shared_ptr<AST::BaseUnaryOp> node);
 
  private:
-  std::shared_ptr<AST::Root> mAst;
-  std::ofstream mOut;
-
   GBAS::SectionType mCurrSectionType;
   //std::vector<std::pair<std::string, size_t>> mLabels;
 };
 
-class AssemblerException : std::exception {
- public:
-  AssemblerException(const char* msg) { mMsg = msg; }
-
-  AssemblerException(const std::string& msg) { mMsg = msg; }
-
-  virtual const char* what() const noexcept { return mMsg.c_str(); }
-
- private:
-  std::string mMsg;
-};

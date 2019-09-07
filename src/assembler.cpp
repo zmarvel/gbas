@@ -4,67 +4,87 @@
 #include <memory>
 
 #include "assembler.hpp"
+#include "char_utils.hpp"
 
 using namespace AST;
 using namespace GBAS;
 
-Assembler::Assembler(std::shared_ptr<AST::Root> ast, std::ofstream out)
-    : mAst{ast}, mOut{std::move(out)} {}
+Assembler::Assembler() : mCurrSectionType{SectionType::INVALID} { }
 
-void Assembler::assemble() {
+void Assembler::assemble(std::shared_ptr<AST::Root> ast, ELF& elf) {
   // This could live on the stack
-  ELF elf{};
-
-  for (auto it = mAst->begin(); it != mAst->end(); it++) {
+  for (auto it = ast->begin(); it != ast->end(); it++) {
     auto node = *it;
     switch (node->id()) {
+      case NodeType::DIRECTIVE:
+        {
+          auto directive = std::dynamic_pointer_cast<Directive>(node);
+          switch (directive->type()) {
+            case DirectiveType::SECTION:
+              {
+                auto sectionType = stringToSectionType(directive->operands().at(0));
+                if (sectionType == SectionType::INVALID) {
+                  throw AssemblerException{"Invalid section name"};
+                } else {
+                  mCurrSectionType = sectionType;
+                }
+              }
+              break;
+            default:
+              throw AssemblerException{"Invalid directive type"};
+          }
+        }
+        break;
       case NodeType::INSTRUCTION:
+        mCurrSectionType = SectionType::TEXT;
         assembleInstruction(elf,
                             *std::dynamic_pointer_cast<BaseInstruction>(node));
         break;
-      case NodeType::LABEL: {
-        auto label = std::dynamic_pointer_cast<Label>(node);
-        size_t value;
-        uint8_t info = ELF32_ST_BIND(STB_GLOBAL);
-        uint16_t other;
-        // TODO support bindings other than GLOBAL
-        switch (mCurrSectionType) {
-          case SectionType::DATA:
-            value = elf.dataSize();
-            info |= ELF32_ST_TYPE(STT_OBJECT);
-            other = elf.dataIdx();
-            break;
-          case SectionType::RODATA:
-            value = elf.rodataSize();
-            info |= ELF32_ST_TYPE(STT_OBJECT);
-            other = elf.rodataIdx();
-            break;
-          case SectionType::BSS:
-            value = elf.bssSize();
-            info |= ELF32_ST_TYPE(STT_OBJECT);
-            other = elf.bssIdx();
-            break;
-          case SectionType::TEXT:
-            value = elf.textSize();
-            info |= ELF32_ST_TYPE(STT_FUNC);
-            other = elf.textIdx();
-            break;
-          case SectionType::INIT:
-            value = elf.initSize();
-            info |= ELF32_ST_TYPE(STT_FUNC);
-            other = elf.initIdx();
-            break;
-          default:
-            throw AssemblerException("Invalid section type");
+      case NodeType::LABEL:
+        {
+          auto label = std::dynamic_pointer_cast<Label>(node);
+          size_t value;
+          uint8_t info = ELF32_ST_BIND(STB_GLOBAL);
+          uint16_t other;
+          // TODO support bindings other than GLOBAL
+          switch (mCurrSectionType) {
+            case SectionType::DATA:
+              value = elf.dataSize();
+              info |= ELF32_ST_TYPE(STT_OBJECT);
+              other = elf.dataIdx();
+              break;
+            case SectionType::RODATA:
+              value = elf.rodataSize();
+              info |= ELF32_ST_TYPE(STT_OBJECT);
+              other = elf.rodataIdx();
+              break;
+            case SectionType::BSS:
+              value = elf.bssSize();
+              info |= ELF32_ST_TYPE(STT_OBJECT);
+              other = elf.bssIdx();
+              break;
+            case SectionType::TEXT:
+              value = elf.textSize();
+              info |= ELF32_ST_TYPE(STT_FUNC);
+              other = elf.textIdx();
+              break;
+            case SectionType::INIT:
+              value = elf.initSize();
+              info |= ELF32_ST_TYPE(STT_FUNC);
+              other = elf.initIdx();
+              break;
+            default:
+              throw AssemblerException("Invalid section type");
+          }
+          // TODO relocatable
+          //elf.addSymbol(label->name(), value, 0, info, STV_DEFAULT, other, true);
+          elf.addSymbol(label->name(), value, 0, info, STV_DEFAULT, other, false);
         }
-        elf.addSymbol(label->name(), value, 0, info, STV_DEFAULT, other, true);
-      } break;
+        break;
       default:
         throw AssemblerException("Invalid node");
     }
   }
-
-  elf.write(mOut);
 }
 
 /**
@@ -274,67 +294,6 @@ struct InstructionRR {
 };
 
 /**
- * Instruction with no operands.
- */
-template <InstructionType typ>
-struct InstructionNone {
-  constexpr uint8_t encode() {
-    uint8_t opcode = 0;
-    switch (typ) {
-      case InstructionType::NOP:
-        opcode = 0x00;
-        break;
-      case InstructionType::STOP:
-        opcode = 0x10;
-        break;
-      case InstructionType::RLCA:
-        opcode = 0x07;
-        break;
-      case InstructionType::RLA:
-        opcode = 0x17;
-        break;
-      case InstructionType::DAA:
-        opcode = 0x27;
-        break;
-      case InstructionType::SCF:
-        opcode = 0x37;
-        break;
-      case InstructionType::RRCA:
-        opcode = 0x0f;
-        break;
-      case InstructionType::RRA:
-        opcode = 0x1f;
-        break;
-      case InstructionType::CPL:
-        opcode = 0x2f;
-        break;
-      case InstructionType::CCF:
-        opcode = 0x3f;
-        break;
-      case InstructionType::HALT:
-        opcode = 0x76;
-        break;
-      case InstructionType::DI:
-        opcode = 0xf3;
-        break;
-      case InstructionType::RET:
-        opcode = 0xc9;
-        break;
-      case InstructionType::RETI:
-        opcode = 0xd9;
-        break;
-      case InstructionType::EI:
-        opcode = 0xfb;
-        break;
-      default:
-        throw AssemblerException("Unrecognized instruction");
-        break;
-    }
-    return opcode;
-  }
-};
-
-/**
  * Instruction with a flag and 8-bit immediate.
  */
 template <uint8_t prefix, uint8_t flag, uint8_t opcode, uint8_t imm8>
@@ -401,89 +360,101 @@ enum class OperandType {
   INVALID,
 };
 
-const std::map<const InstructionType,
-               const std::vector<std::pair<OperandType, OperandType>>>
-    formats{
-        // prefix 0x0
-        {InstructionType::INC,
-         {
-             {OperandType::REGISTER, OperandType::INVALID},
-             {OperandType::DREGISTER, OperandType::INVALID},
-         }},
-        {InstructionType::DEC,
-         {
-             {OperandType::REGISTER, OperandType::INVALID},
-             {OperandType::DREGISTER, OperandType::INVALID},
-         }},
-        {InstructionType::LD,
-         {
-             {OperandType::REGISTER, OperandType::IMM8},
-             {OperandType::DREGISTER, OperandType::IMM16},
-         }},
-        {InstructionType::NOP, {{OperandType::INVALID, OperandType::INVALID}}},
-        {InstructionType::STOP, {{OperandType::INVALID, OperandType::INVALID}}},
-        {InstructionType::RLCA, {{OperandType::INVALID, OperandType::INVALID}}},
-        {InstructionType::RLA, {{OperandType::INVALID, OperandType::INVALID}}},
-        {InstructionType::DAA, {{OperandType::INVALID, OperandType::INVALID}}},
-        {InstructionType::SCF, {{OperandType::INVALID, OperandType::INVALID}}},
-        {InstructionType::RRCA, {{OperandType::INVALID, OperandType::INVALID}}},
-        {InstructionType::RRA, {{OperandType::INVALID, OperandType::INVALID}}},
-        {InstructionType::CPL, {{OperandType::INVALID, OperandType::INVALID}}},
-        {InstructionType::CCF, {{OperandType::INVALID, OperandType::INVALID}}},
-        {InstructionType::JR,
-         {
-             {OperandType::FLAG, OperandType::IMM8},
-             {OperandType::IMM8, OperandType::INVALID},
-         }},
-        {InstructionType::HALT, {{OperandType::INVALID, OperandType::INVALID}}},
-        {InstructionType::SUB,
-         {
-             {OperandType::REGISTER, OperandType::INVALID},
-             {OperandType::REGISTER, OperandType::IMM8},
-         }},
-        {InstructionType::AND,
-         {
-             {OperandType::REGISTER, OperandType::INVALID},
-             {OperandType::REGISTER, OperandType::IMM8},
-         }},
-        {InstructionType::XOR,
-         {
-             {OperandType::REGISTER, OperandType::INVALID},
-             {OperandType::REGISTER, OperandType::IMM8},
-         }},
-        {InstructionType::OR,
-         {
-             {OperandType::REGISTER, OperandType::INVALID},
-             {OperandType::REGISTER, OperandType::IMM8},
-         }},
-        {InstructionType::CP,
-         {
-             {OperandType::REGISTER, OperandType::INVALID},
-             {OperandType::REGISTER, OperandType::IMM8},
-         }},
-        {InstructionType::POP,
-         {{OperandType::DREGISTER, OperandType::INVALID}}},
-        {InstructionType::PUSH,
-         {{OperandType::DREGISTER, OperandType::INVALID}}},
-        {InstructionType::DI, {{OperandType::INVALID, OperandType::INVALID}}},
-        {InstructionType::EI, {{OperandType::INVALID, OperandType::INVALID}}},
-        {InstructionType::RET,
-         {
-             {OperandType::INVALID, OperandType::INVALID},
-             {OperandType::FLAG, OperandType::IMM8},
-         }},
-        {InstructionType::RETI, {{OperandType::INVALID, OperandType::INVALID}}},
-        {InstructionType::JP,
-         {
-             {OperandType::FLAG, OperandType::IMM8},
-             {OperandType::IMM16, OperandType::INVALID},
-         }},
-        {InstructionType::CALL,
-         {
-             {OperandType::FLAG, OperandType::IMM8},
-             {OperandType::IMM16, OperandType::INVALID},
-         }},
-    };
+static const std::map<const InstructionType,
+                      const std::vector<std::pair<OperandType, OperandType>>>
+  formats{
+    // prefix 0x0
+    { InstructionType::INC,
+      {
+        { OperandType::REGISTER, OperandType::INVALID },
+        { OperandType::DREGISTER, OperandType::INVALID },
+      } },
+    { InstructionType::DEC,
+      {
+        { OperandType::REGISTER, OperandType::INVALID },
+        { OperandType::DREGISTER, OperandType::INVALID },
+      } },
+    { InstructionType::LD,
+      {
+        { OperandType::REGISTER, OperandType::IMM8 },
+        { OperandType::DREGISTER, OperandType::IMM16 },
+      } },
+    { InstructionType::NOP,
+      { { OperandType::INVALID, OperandType::INVALID } } },
+    { InstructionType::STOP,
+      { { OperandType::INVALID, OperandType::INVALID } } },
+    { InstructionType::RLCA,
+      { { OperandType::INVALID, OperandType::INVALID } } },
+    { InstructionType::RLA,
+      { { OperandType::INVALID, OperandType::INVALID } } },
+    { InstructionType::DAA,
+      { { OperandType::INVALID, OperandType::INVALID } } },
+    { InstructionType::SCF,
+      { { OperandType::INVALID, OperandType::INVALID } } },
+    { InstructionType::RRCA,
+      { { OperandType::INVALID, OperandType::INVALID } } },
+    { InstructionType::RRA,
+      { { OperandType::INVALID, OperandType::INVALID } } },
+    { InstructionType::CPL,
+      { { OperandType::INVALID, OperandType::INVALID } } },
+    { InstructionType::CCF,
+      { { OperandType::INVALID, OperandType::INVALID } } },
+    { InstructionType::JR,
+      {
+        { OperandType::FLAG, OperandType::IMM8 },
+        { OperandType::IMM8, OperandType::INVALID },
+      } },
+    { InstructionType::HALT,
+      { { OperandType::INVALID, OperandType::INVALID } } },
+    { InstructionType::SUB,
+      {
+        { OperandType::REGISTER, OperandType::INVALID },
+        { OperandType::REGISTER, OperandType::IMM8 },
+      } },
+    { InstructionType::AND,
+      {
+        { OperandType::REGISTER, OperandType::INVALID },
+        { OperandType::REGISTER, OperandType::IMM8 },
+      } },
+    { InstructionType::XOR,
+      {
+        { OperandType::REGISTER, OperandType::INVALID },
+        { OperandType::REGISTER, OperandType::IMM8 },
+      } },
+    { InstructionType::OR,
+      {
+        { OperandType::REGISTER, OperandType::INVALID },
+        { OperandType::REGISTER, OperandType::IMM8 },
+      } },
+    { InstructionType::CP,
+      {
+        { OperandType::REGISTER, OperandType::INVALID },
+        { OperandType::REGISTER, OperandType::IMM8 },
+      } },
+    { InstructionType::POP,
+      { { OperandType::DREGISTER, OperandType::INVALID } } },
+    { InstructionType::PUSH,
+      { { OperandType::DREGISTER, OperandType::INVALID } } },
+    { InstructionType::DI, { { OperandType::INVALID, OperandType::INVALID } } },
+    { InstructionType::EI, { { OperandType::INVALID, OperandType::INVALID } } },
+    { InstructionType::RET,
+      {
+        { OperandType::INVALID, OperandType::INVALID },
+        { OperandType::FLAG, OperandType::IMM8 },
+      } },
+    { InstructionType::RETI,
+      { { OperandType::INVALID, OperandType::INVALID } } },
+    { InstructionType::JP,
+      {
+        { OperandType::FLAG, OperandType::IMM8 },
+        { OperandType::IMM16, OperandType::INVALID },
+      } },
+    { InstructionType::CALL,
+      {
+        { OperandType::FLAG, OperandType::IMM8 },
+        { OperandType::IMM16, OperandType::INVALID },
+      } },
+  };
 
 // TODO
 // jp (hl)
@@ -507,7 +478,7 @@ void Assembler::assembleInstruction(ELF& elf, BaseInstruction& instr) {
               return (fmt.first == OperandType::INVALID) &&
                      (fmt.second == OperandType::INVALID);
             })) {
-          elf.addText(instructionNone(instr0));
+          elf.addText(std::vector<uint8_t>{InstructionNone{instr0.type()}.encode()});
         } else {
           throw AssemblerException("Invalid instruction0 usage");
         }
@@ -637,74 +608,6 @@ void Assembler::assembleInstruction(ELF& elf, BaseInstruction& instr) {
     break;
 
     case 2:
-      break;
-  }
-}
-
-std::vector<uint8_t> Assembler::instructionNone(Instruction0& instr0) {
-  switch (instr0.type()) {
-    case InstructionType::NOP:
-      return std::vector<uint8_t>{
-          InstructionNone<InstructionType::NOP>{}.encode()};
-      break;
-    case InstructionType::STOP:
-      return std::vector<uint8_t>{
-          InstructionNone<InstructionType::STOP>{}.encode()};
-      break;
-    case InstructionType::RLCA:
-      return std::vector<uint8_t>{
-          InstructionNone<InstructionType::RLCA>{}.encode()};
-      break;
-    case InstructionType::RLA:
-      return std::vector<uint8_t>{
-          InstructionNone<InstructionType::RLA>{}.encode()};
-      break;
-    case InstructionType::DAA:
-      return std::vector<uint8_t>{
-          InstructionNone<InstructionType::DAA>{}.encode()};
-      break;
-    case InstructionType::SCF:
-      return std::vector<uint8_t>{
-          InstructionNone<InstructionType::SCF>{}.encode()};
-      break;
-    case InstructionType::RRCA:
-      return std::vector<uint8_t>{
-          InstructionNone<InstructionType::RRCA>{}.encode()};
-      break;
-    case InstructionType::RRA:
-      return std::vector<uint8_t>{
-          InstructionNone<InstructionType::RRA>{}.encode()};
-      break;
-    case InstructionType::CPL:
-      return std::vector<uint8_t>{
-          InstructionNone<InstructionType::CPL>{}.encode()};
-      break;
-    case InstructionType::CCF:
-      return std::vector<uint8_t>{
-          InstructionNone<InstructionType::CCF>{}.encode()};
-      break;
-    case InstructionType::HALT:
-      return std::vector<uint8_t>{
-          InstructionNone<InstructionType::HALT>{}.encode()};
-      break;
-    case InstructionType::DI:
-      return std::vector<uint8_t>{
-          InstructionNone<InstructionType::DI>{}.encode()};
-      break;
-    case InstructionType::RET:
-      return std::vector<uint8_t>{
-          InstructionNone<InstructionType::RET>{}.encode()};
-      break;
-    case InstructionType::RETI:
-      return std::vector<uint8_t>{
-          InstructionNone<InstructionType::RETI>{}.encode()};
-      break;
-    case InstructionType::EI:
-      return std::vector<uint8_t>{
-          InstructionNone<InstructionType::EI>{}.encode()};
-      break;
-    default:
-      throw AssemblerException("Unrecognized instruction");
       break;
   }
 }
@@ -839,8 +742,9 @@ std::shared_ptr<BaseInstruction> Assembler::evaluateInstruction(
   }
 }
 
-std::shared_ptr<BaseNode> Assembler::evaluateBinaryOp(
-    std::shared_ptr<BaseBinaryOp> node) {
+std::shared_ptr<BaseNode>
+Assembler::evaluateBinaryOp(std::shared_ptr<BaseBinaryOp> node)
+{
   switch (node->opType()) {
     case BinaryOpType::ADD: {
       auto op = std::dynamic_pointer_cast<AddOp>(node);

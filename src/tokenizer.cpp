@@ -3,27 +3,18 @@
 #include <string>
 
 #include "tokenizer.hpp"
+#include "char_utils.hpp"
+
+using namespace GBAS;
 
 const std::array<Token, 2> Tokenizer::reserved = {
     "EOL",
     "EOF",
 };
 
-const std::array<char, 4> Tokenizer::operators = {'*', '/', '+', '-'};
-
 bool Tokenizer::isReserved(Token tok) {
   auto it = std::find(reserved.begin(), reserved.end(), tok);
   return it != reserved.end();
-}
-
-bool Tokenizer::isAlphaNumeric(char c) {
-  return ((c >= '0') && (c <= '9')) || ((c >= 'A') && (c <= 'Z')) ||
-         ((c >= 'a') && (c <= 'z'));
-}
-
-bool Tokenizer::isOperator(char c) {
-  auto it = std::find(operators.begin(), operators.end(), c);
-  return it != operators.end();
 }
 
 void Tokenizer::logError(std::ostream& out, const std::string& msg,
@@ -83,7 +74,7 @@ TokenList Tokenizer::tokenize(std::basic_istream<char>& lines) {
             tokbuf.push_back(curr);
             pos++;
             state = State::END_TOKEN;
-          } else if (isOperator(curr)) {
+          } else if (isNumericOp(curr)) {
             tokbuf.push_back(curr);
             pos++;
             state = State::END_TOKEN;
@@ -116,7 +107,7 @@ TokenList Tokenizer::tokenize(std::basic_istream<char>& lines) {
           } else if (curr == ' ') {
             pos++;
             state = State::END_TOKEN;
-          } else if (isOperator(curr)) {
+          } else if (isNumericOp(curr)) {
             state = State::END_TOKEN;
           } else if (curr == ',' || curr == ')') {
             // end of token, but don't increment pos so these symbols are

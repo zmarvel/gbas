@@ -32,7 +32,6 @@ class Tokenizer {
   TokenList tokenize(std::basic_istream<char>& lines);
   static bool isReserved(Token tok);
   static bool isOperator(char c);
-  static bool isAlphaNumeric(char c);
 
  private:
   static const std::array<Token, 2> reserved;

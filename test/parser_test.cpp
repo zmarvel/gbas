@@ -6,17 +6,6 @@
 
 BOOST_AUTO_TEST_SUITE(parser_token_predicates);
 
-BOOST_AUTO_TEST_CASE(parser_test_isNumber) {
-  // We can assume that there are no trailing or leading spaces
-  BOOST_CHECK_EQUAL(Parser::isNumber(""), false);
-  BOOST_CHECK_EQUAL(Parser::isNumber("1"), true);
-  BOOST_CHECK_EQUAL(Parser::isNumber("42"), true);
-  BOOST_CHECK_EQUAL(Parser::isNumber(" 42"), false);
-  BOOST_CHECK_EQUAL(Parser::isNumber("42 "), false);
-  BOOST_CHECK_EQUAL(Parser::isNumber("a42"), false);
-  BOOST_CHECK_EQUAL(Parser::isNumber("42a"), false);
-}
-
 BOOST_AUTO_TEST_CASE(parser_test_isNumericOp) {
   // We can assume that there are no trailing or leading spaces
   BOOST_CHECK_EQUAL(Parser::isNumericOp(""), false);
@@ -354,42 +343,6 @@ BOOST_AUTO_TEST_CASE(parser_test_unary) {
 }
 
 BOOST_AUTO_TEST_CASE(parser_test_label) {
-  {
-    TokenList tokens{"1asdf"};
-    Parser parser{tokens};
-    BOOST_CHECK_THROW(parser.label(), ParserException);
-  }
-
-  {
-    TokenList tokens{""};
-    Parser parser{tokens};
-    BOOST_CHECK_THROW(parser.label(), ParserException);
-  }
-
-  {
-    TokenList tokens{" "};
-    Parser parser{tokens};
-    BOOST_CHECK_THROW(parser.label(), ParserException);
-  }
-
-  {
-    TokenList tokens{"asdf-1"};
-    Parser parser{tokens};
-    BOOST_CHECK_THROW(parser.label(), ParserException);
-  }
-
-  {
-    TokenList tokens{"a@"};
-    Parser parser{tokens};
-    BOOST_CHECK_THROW(parser.label(), ParserException);
-  }
-
-  {
-    TokenList tokens{"a:"};
-    Parser parser{tokens};
-    BOOST_CHECK_THROW(parser.label(), ParserException);
-  }
-
   {
     TokenList tokens{"asdf12aa23"};
     Parser parser{tokens};

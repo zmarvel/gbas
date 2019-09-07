@@ -3,6 +3,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "assembler.hpp"
+#include "elf_wrapper.hpp"
 
 /*
  * We need a notion of AST equality. Given two trees, let's walk them both and
@@ -582,7 +583,7 @@ BOOST_AUTO_TEST_CASE(assembler_test_evaluate) {
 
     // Let's just build the expected tree and make sure it's equal
     auto rinstr0 =
-        std::make_shared<AST::Instruction0>(AST::InstructionType::NOP);
+      std::make_shared<AST::Instruction0>(AST::InstructionType::NOP);
     auto rinstr1 = std::make_shared<AST::Instruction1>(
         AST::InstructionType::JP, std::make_shared<AST::Number>(42));
     auto rinstr2 = std::make_shared<AST::Instruction2>(
@@ -594,6 +595,151 @@ BOOST_AUTO_TEST_CASE(assembler_test_evaluate) {
     auto rrootExpected = std::make_shared<AST::Root>(rinstrs);
     BOOST_CHECK(isAstEqual(rroot, rrootExpected));
   }
+}
+
+BOOST_AUTO_TEST_SUITE_END();
+
+BOOST_AUTO_TEST_SUITE(assembler_translation)
+
+BOOST_AUTO_TEST_CASE(assembler_test_instructionNone) {
+  {
+    auto result = std::vector<uint8_t>{InstructionNone(AST::InstructionType::NOP).encode()};
+    auto expected = std::vector<uint8_t>{0x00};
+    BOOST_CHECK(result == expected);
+  }
+  {
+    auto result = std::vector<uint8_t>{InstructionNone(AST::InstructionType::STOP).encode()};
+    auto expected = std::vector<uint8_t>{0x10};
+    BOOST_CHECK(result == expected);
+  }
+  {
+    auto result = std::vector<uint8_t>{InstructionNone(AST::InstructionType::RLCA).encode()};
+    auto expected = std::vector<uint8_t>{0x07};
+    BOOST_CHECK(result == expected);
+  }
+  {
+    auto result = std::vector<uint8_t>{InstructionNone(AST::InstructionType::RLA).encode()};
+    auto expected = std::vector<uint8_t>{0x17};
+    BOOST_CHECK(result == expected);
+  }
+  {
+    auto result = std::vector<uint8_t>{InstructionNone(AST::InstructionType::DAA).encode()};
+    auto expected = std::vector<uint8_t>{0x27};
+    BOOST_CHECK(result == expected);
+  }
+  {
+    auto result = std::vector<uint8_t>{InstructionNone(AST::InstructionType::SCF).encode()};
+    auto expected = std::vector<uint8_t>{0x37};
+    BOOST_CHECK(result == expected);
+  }
+  {
+    auto result = std::vector<uint8_t>{InstructionNone(AST::InstructionType::RRCA).encode()};
+    auto expected = std::vector<uint8_t>{0x0f};
+    BOOST_CHECK(result == expected);
+  }
+  {
+    auto result = std::vector<uint8_t>{InstructionNone(AST::InstructionType::RRA).encode()};
+    auto expected = std::vector<uint8_t>{0x1f};
+    BOOST_CHECK(result == expected);
+  }
+  {
+    auto result = std::vector<uint8_t>{InstructionNone(AST::InstructionType::CPL).encode()};
+    auto expected = std::vector<uint8_t>{0x2f};
+    BOOST_CHECK(result == expected);
+  }
+  {
+    auto result = std::vector<uint8_t>{InstructionNone(AST::InstructionType::CCF).encode()};
+    auto expected = std::vector<uint8_t>{0x3f};
+    BOOST_CHECK(result == expected);
+  }
+  {
+    auto result = std::vector<uint8_t>{InstructionNone(AST::InstructionType::HALT).encode()};
+    auto expected = std::vector<uint8_t>{0x76};
+    BOOST_CHECK(result == expected);
+  }
+  {
+    auto result = std::vector<uint8_t>{InstructionNone(AST::InstructionType::DI).encode()};
+    auto expected = std::vector<uint8_t>{0xf3};
+    BOOST_CHECK(result == expected);
+  }
+  {
+    auto result = std::vector<uint8_t>{InstructionNone(AST::InstructionType::RET).encode()};
+    auto expected = std::vector<uint8_t>{0xc9};
+    BOOST_CHECK(result == expected);
+  }
+  {
+    auto result = std::vector<uint8_t>{InstructionNone(AST::InstructionType::RETI).encode()};
+    auto expected = std::vector<uint8_t>{0xd9};
+    BOOST_CHECK(result == expected);
+  }
+  {
+    auto result = std::vector<uint8_t>{InstructionNone(AST::InstructionType::EI).encode()};
+    auto expected = std::vector<uint8_t>{0xfb};
+    BOOST_CHECK(result == expected);
+  }
+  {
+    BOOST_CHECK_THROW(InstructionNone(AST::InstructionType::RST).encode(), AssemblerException);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(assembler_test_assemble_instructionNone) {
+  using namespace AST;
+  using namespace GBAS;
+  ELFWrapper elf{};
+  auto ast = std::make_shared<Root>();
+  ast->add(std::make_shared<Instruction0>(InstructionType::NOP));
+
+  Assembler assembler{};
+  assembler.assemble(ast, elf);
+
+  auto expected = std::vector<uint8_t>{InstructionNone{InstructionType::NOP}.encode()};
+  BOOST_CHECK(elf.getText() == expected);
+}
+
+BOOST_AUTO_TEST_CASE(assembler_test_assemble_directive) {
+  using namespace AST;
+  using namespace GBAS;
+  {
+    ELFWrapper elf{};
+
+    Assembler assembler{};
+    BOOST_CHECK(assembler.currentSectionType() == GBAS::SectionType::INVALID);
+
+    auto ast = std::make_shared<Root>();
+    ast->add(std::make_shared<Directive>(DirectiveType::SECTION, Directive::OperandList{".text"}));
+    assembler.assemble(ast, elf);
+
+    BOOST_CHECK(assembler.currentSectionType() == GBAS::SectionType::TEXT);
+  }
+  {
+    ELFWrapper elf{};
+    auto ast = std::make_shared<Root>();
+    ast->add(std::make_shared<Directive>(DirectiveType::SECTION, Directive::OperandList{".text"}));
+    ast->add(std::make_shared<Instruction0>(InstructionType::NOP));
+
+    Assembler assembler{};
+    assembler.assemble(ast, elf);
+
+    auto expected = std::vector<uint8_t>{InstructionNone{InstructionType::NOP}.encode()};
+    BOOST_CHECK(elf.getText() == expected);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(assembler_test_assemble_label) {
+  using namespace AST;
+  using namespace GBAS;
+  ELFWrapper elf{};
+  auto ast = std::make_shared<Root>();
+  ast->add(std::make_shared<Directive>(DirectiveType::SECTION,
+        Directive::OperandList{".text"}));
+  ast->add(std::make_shared<Label>("nop"));
+  ast->add(std::make_shared<Instruction0>(InstructionType::NOP));
+
+  Assembler assembler{};
+  assembler.assemble(ast, elf);
+
+  auto expected = std::vector<uint8_t>{InstructionNone{InstructionType::NOP}.encode()};
+  BOOST_CHECK(elf.getText() == expected);
 }
 
 BOOST_AUTO_TEST_SUITE_END();

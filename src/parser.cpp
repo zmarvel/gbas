@@ -2,12 +2,14 @@
 #include <algorithm>
 
 #include "parser.hpp"
+#include "char_utils.hpp"
 
 Parser::Parser(TokenList& tokens) : mTokens{tokens}, mRoot{}, mPos{0} {}
 
 Parser::~Parser() {}
 
 using namespace AST;
+using namespace GBAS;
 
 static const std::array<const Token, 8> registers = {
     "a", "f", "b", "c", "d", "e", "h", "l",
@@ -16,6 +18,10 @@ static const std::array<const Token, 8> registers = {
 static const std::array<const Token, 6> doubleRegisters = {
     "af", "bc", "de", "hl", "sp", "pc",
 };
+
+static DirectivePropsList directives{{
+  {".section", DirectiveType::SECTION, 1},
+}};
 
 static InstructionPropsList instructions{{
     {"add", InstructionType::ADD, 2, 2},
@@ -94,10 +100,10 @@ std::shared_ptr<BaseNode> Parser::program() {
 
 std::shared_ptr<BaseNode> Parser::line() {
   auto tok = peek();
-  if (isLabel(tok) && (peekNext() == ":")) {
+  if (isDirective(tok)) {
+    return directive();
+  } else if (isLabel(tok) && (peekNext() == ":")) {
     return label();
-    // TODO
-    // } else if (isDirective(tok)) {
   } else if (isInstruction(tok)) {
     return instruction();
   } else {
@@ -106,12 +112,36 @@ std::shared_ptr<BaseNode> Parser::line() {
 }
 
 std::shared_ptr<BaseNode> Parser::label() {
-  auto tok = next();
-  if (isLabel(tok)) {
-    return std::make_shared<Label>(tok);
+  return parseLabel(next());
+}
+
+std::shared_ptr<BaseNode> Parser::parseLabel(const Token& tok) {
+  return std::make_shared<Label>(tok);
+}
+
+
+const DirectiveProps& Parser::findDirective(const Token& tok) {
+  auto props = std::find_if(directives.begin(), directives.end(),
+      [&](auto props) { return props.lexeme == tok; });
+  if (props == directives.end()) {
+    throw ParserException{"Invalid directive in program"};
   } else {
-    throw ParserException("Invalid label");
+    return *props;
   }
+}
+
+std::shared_ptr<BaseNode> Parser::directive() {
+  auto props = findDirective(next());
+  Directive::OperandList operands{};
+  for (int i = 0; i < props.args; i++) {
+    auto tok = peek();
+    if (isNewline(tok)) {
+      throw ParserException{"Expected more arguments in directive"};
+    } else {
+      operands.push_back(next());
+    }
+  }
+  return std::make_shared<Directive>(props.type, operands);
 }
 
 std::shared_ptr<BaseNode> Parser::instruction() {
@@ -264,8 +294,11 @@ std::shared_ptr<BaseNode> Parser::primary() {
 }
 
 std::shared_ptr<BaseNode> Parser::number() {
-  return std::make_shared<Number>(
-      static_cast<Number>(std::atoi(next().c_str())));
+  return parseNumber(next());
+}
+
+std::shared_ptr<BaseNode> Parser::parseNumber(const Token& tok) {
+  return std::make_shared<Number>(static_cast<Number>(std::atoi(tok.c_str())));
 }
 
 bool Parser::isNewline(const Token& tok) { return tok == "EOL"; }
@@ -289,31 +322,8 @@ TokenList Parser::readLine(TokenList& tokens) {
   return list;
 }
 
-bool Parser::isNumber(const Token& tok) {
-  if (tok.size() == 0) {
-    return false;
-  }
-
-  for (auto it = tok.begin(); it != tok.end(); it++) {
-    if (*it < '0' || *it > '9') {
-      return false;
-    }
-  }
-  return true;
-}
-
 bool Parser::isNumericOp(const Token& tok) {
-  if (tok == "+") {
-    return true;
-  } else if (tok == "-") {
-    return true;
-  } else if (tok == "*") {
-    return true;
-  } else if (tok == "/") {
-    return true;
-  } else {
-    return false;
-  }
+  return tok.size() == 1 && GBAS::isNumericOp(tok.at(0));
 }
 
 InstructionPropsList::const_iterator Parser::findInstruction(const Token& tok) {
@@ -332,23 +342,40 @@ bool Parser::isInstruction(const Token& tok) {
 bool Parser::isLabel(const Token& tok) {
   if (tok.size() == 0) {
     return false;
-  } else if (tok[0] >= '0' && tok[0] <= '9') {
+  } else if (isDigit(tok[0])) {
     // Labels can't start with a number
+    return false;
+  } else if (tok[0] == '.') {
     return false;
   }
 
   for (auto it = tok.begin(); it != tok.end(); it++) {
-    if ((*it < '0' || *it > '9') && (*it < 'A' || *it > 'Z') &&
-        (*it < 'a' || *it > 'z') && *it != '_') {
+    if (!isAlphaNumeric(*it) && *it != '_') {
       return false;
     }
   }
 
-  if (findInstruction(tok) != instructions.end()) {
+  // Make sure it isn't an instruction--"reserved"
+  // Can't be a directive because it doesn't start with a period
+  if (isInstruction(tok)) {
     return false;
   }
 
   return true;
+}
+
+bool Parser::isDirective(const Token& tok) {
+  if (tok.size() < 2) {
+    return false;
+  } else if (tok[0] != '.') {
+    return false;
+  } else if (isDigit(tok[1])) {
+    // Labels can't start with a number
+    return false;
+  }
+
+  return std::all_of(tok.begin() + 1, tok.end(),
+      [](auto c) { return isAlphaNumeric(c); });
 }
 
 bool Parser::isRegister(const Token& tok) {

@@ -17,7 +17,8 @@ COVS = $(SRCS:.cpp=.gcda) \
 EXE_OBJS = $(OBJS) $(EXE_SRC:.cpp=.o)
 INC = -Iinclude
 
-TEST_SRCS = test/tokenizer_test.cpp \
+TEST_SRCS = test/char_utils_test.cpp \
+	    test/tokenizer_test.cpp \
 	    test/parser_test.cpp \
 	    test/assembler_test.cpp \
 	    test/elf_test.cpp \
@@ -35,12 +36,14 @@ $(EXE): $(EXE_OBJS)
 
 .PHONY: test
 test: $(TEST_EXE)
+test: CXXFLAGS += -Itest
 
 
 $(TEST_EXE): $(OBJS) $(TEST_OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $^ -lboost_unit_test_framework
 
 .PHONY: check
+check: CXXFLAGS += -Itest
 check: $(TEST_EXE)
 ifdef CHECK_LOG
 	-./$(TEST_EXE) $(CHECK_OPTIONS) > $(CHECK_LOG)
