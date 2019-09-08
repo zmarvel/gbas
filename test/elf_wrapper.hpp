@@ -25,6 +25,7 @@ class ELFWrapper : public ELF {
     if (it == mSections.end()) {
       std::ostringstream builder{};
       builder << "Section " << name << " not found";
+      std::cerr << builder.str() << std::endl;
       throw ELFException{builder.str()};
     }
     return *it;

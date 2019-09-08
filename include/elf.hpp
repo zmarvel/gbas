@@ -79,6 +79,11 @@ class ProgramSection : public Section<SectionType::PROGBITS> {
       return mData;
     }
 
+    void append(std::vector<uint8_t>& buf) {
+      mData.insert(mData.end(), buf.begin(), buf.end());
+      header().sh_size += buf.size();
+    }
+
   private:
     std::vector<uint8_t> mData;
 };
