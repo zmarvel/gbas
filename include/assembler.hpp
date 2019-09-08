@@ -5,33 +5,6 @@
 #include "parser.hpp"
 #include "elf.hpp"
 
-namespace GBAS {
-  enum class SectionType {
-    DATA,
-    RODATA,
-    BSS,
-    TEXT,
-    INIT,
-    INVALID,
-  };
-
-  static inline SectionType stringToSectionType(const std::string& str) {
-    if (str == ".data") {
-      return SectionType::DATA;
-    } else if (str == ".rodata") {
-      return SectionType::RODATA;
-    } else if (str == ".bss") {
-      return SectionType::BSS;
-    } else if (str == ".text") {
-      return SectionType::TEXT;
-    } else if (str == ".init") {
-      return SectionType::INIT;
-    } else {
-      return SectionType::INVALID;
-    }
-  };
-}
-
 class AssemblerException : std::exception {
  public:
   AssemblerException(const char* msg) { mMsg = msg; }
@@ -125,8 +98,6 @@ class Assembler {
    * @throws AssemblerException upon invalid input.
    */
   void assemble(std::shared_ptr<AST::Root> ast, GBAS::ELF& elf);
-
-  GBAS::SectionType currentSectionType() { return mCurrSectionType; }
 
   /**
    * Helper function to dispatch and generate code for Instruction nodes.
@@ -225,9 +196,5 @@ class Assembler {
    */
   static std::shared_ptr<AST::BaseNode> evaluateUnaryOp(
       std::shared_ptr<AST::BaseUnaryOp> node);
-
- private:
-  GBAS::SectionType mCurrSectionType;
-  //std::vector<std::pair<std::string, size_t>> mLabels;
 };
 

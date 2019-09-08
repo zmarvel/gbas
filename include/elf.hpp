@@ -13,8 +13,14 @@
 #include "parser.hpp"
 
 namespace GBAS {
-using SymbolTable = std::vector<Elf32_Sym>;
-using StringTable = std::vector<std::string>;
+
+enum class SectionType {
+  PROGBITS,
+  STRTAB,
+  SYMTAB,
+  REL,
+  INVALID,
+};
 
 /**
 typedef struct {
@@ -30,8 +36,136 @@ typedef struct {
   uint32_t   sh_entsize;
 } Elf32_Shdr;
  */
-using SectionHeaderTable = std::vector<Elf32_Shdr>;
-using RelocationSection = std::vector<Elf32_Rel>;
+
+class StrTabSection;
+
+class ISection {
+  public:
+    ISection() : mName{}, mHeader{} { }
+
+    ISection(std::string name, Elf32_Shdr hdr) : mName{name}, mHeader{hdr} { }
+
+    virtual SectionType type() { return SectionType::INVALID; }
+
+    std::string& name() { return mName; }
+
+    Elf32_Shdr& header() { return mHeader; }
+
+  private:
+    std::string mName;
+    Elf32_Shdr mHeader;
+};
+
+template <SectionType stype>
+class Section : public ISection {
+  public:
+    Section() : ISection{} { }
+
+    Section(std::string name, Elf32_Shdr hdr) : ISection{name, hdr} { }
+
+    virtual SectionType type() override { return stype; }
+};
+
+class ProgramSection : public Section<SectionType::PROGBITS> {
+  public:
+    ProgramSection() : Section<SectionType::PROGBITS>(), mData{} { }
+
+    ProgramSection(std::string name, Elf32_Shdr hdr)
+      : Section<SectionType::PROGBITS>(name, hdr)
+      , mData{}
+    { }
+
+    std::vector<uint8_t>& data() {
+      return mData;
+    }
+
+  private:
+    std::vector<uint8_t> mData;
+};
+
+class StrTabSection : public Section<SectionType::STRTAB> {
+  public:
+    using StringTable = std::vector<std::string>;
+
+    StrTabSection() : Section<SectionType::STRTAB>(), mStrings{} { }
+
+    StrTabSection(std::string name, Elf32_Shdr hdr)
+      : Section<SectionType::STRTAB>(name, hdr)
+      , mStrings{}
+    { }
+
+    StringTable& strings() {
+      return mStrings;
+    }
+
+  private:
+    StringTable mStrings;
+};
+
+
+class SymTabSection : public Section<SectionType::SYMTAB> {
+  public:
+    using Symbol = Elf32_Sym;
+    using SymbolTable = std::vector<Symbol>;
+
+    SymTabSection()
+      : Section<SectionType::SYMTAB>()
+      , mSymbols{}
+    {
+      mSymbols.emplace_back(
+          Elf32_Sym{.st_name = 0,
+          .st_value = 0,
+          .st_size = 0,
+          .st_info = 0,
+          .st_other = 0,
+          .st_shndx = 0});
+    }
+
+    SymTabSection(std::string name, Elf32_Shdr hdr)
+      : Section<SectionType::SYMTAB>(name, hdr)
+      , mSymbols{}
+    {
+      mSymbols.emplace_back(
+          Elf32_Sym{.st_name = 0,
+          .st_value = 0,
+          .st_size = 0,
+          .st_info = 0,
+          .st_other = 0,
+          .st_shndx = 0});
+    }
+
+    SymbolTable& symbols() {
+      return mSymbols;
+    }
+
+  private:
+    SymbolTable mSymbols;
+};
+
+class RelSection : public Section<SectionType::REL> {
+  public:
+    using Relocation = Elf32_Rel;
+    using RelocationTable = std::vector<Relocation>;
+
+    RelSection()
+      : Section<SectionType::REL>()
+      , mRelocations{}
+    { }
+
+    RelSection(std::string name, Elf32_Shdr hdr)
+      : Section<SectionType::REL>(name, hdr)
+      , mRelocations{}
+    { }
+
+    RelocationTable& relocations() {
+      return mRelocations;
+    }
+
+  private:
+    RelocationTable mRelocations;
+};
+
+using SectionList = std::vector<ISection>;
 
 /**
  * Models an ELF file, for the purposes of Game Boy programs. This means there
@@ -73,76 +207,16 @@ class ELF {
   std::string& addString(const std::string& str);
 
   /**
-   * Add str to the section names table.
+   * Add some data to a PROGBITS section.
    */
-  std::string& addSectionName(const std::string& str);
+  void addProgbits(std::vector<uint8_t> data);
 
   /**
-   * Add shdr to the section headers table.
-   */
-  Elf32_Shdr& addSectionHeader(const Elf32_Shdr&& shdr);
-  Elf32_Shdr& addSectionHeader(const Elf32_Shdr& shdr);
-
-  /**
-   * Add data to the .data section.
-   */
-  size_t addData(const std::vector<uint8_t>& data);
-  size_t dataSize();
-  size_t dataIdx() {
-    return mDataIdx;
-  }
-
-  /**
-   * Add data to the .rodata section.
-   */
-  size_t addRodata(const std::vector<uint8_t>& data);
-  size_t rodataSize();
-  size_t rodataIdx() {
-    return mRodataIdx;
-  }
-
-  /**
-   * Add data to the .bss section.
-   */
-  size_t addBss(const std::vector<uint8_t>& data);
-  size_t bssSize();
-  size_t bssIdx() {
-    return mBssIdx;
-  }
-
-  /**
-   * Add data to the .text section.
-   */
-  size_t addText(const std::vector<uint8_t>& data);
-  size_t textSize();
-  size_t textIdx() {
-    return mTextIdx;
-  }
-
-  /**
-   * Add data to the .init section.
-   */
-  size_t addInit(const std::vector<uint8_t>& data);
-  size_t initSize();
-  size_t initIdx() {
-    return mInitIdx;
-  }
-
-  /**
-   * Change the current section. If a section with the given name does not
-   * already exist, it will be created (its name will be added to the section
-   * name string table and an entry will be added to the section header table).
+   * Change the current section.
    *
-   * @note This function will also create a corresponding relocation section.
-   *
-   * @param type: valid type arguments are defined in elf.h, and are described
-   * in elf(5).
-   * @param addr: where this section should end up in the final executable. 0
-   *   means it doesn't matter.
-   *
-   * @returns a reference to the header in the section header table.
+   * @param name: Name of an already-created section.
    */
-  Elf32_Shdr& setSection(std::string name, uint32_t addr = 0);
+  void setSection(const std::string& name);
 
   /**
    * Go through each section header and compute each section's offset. If any
@@ -172,120 +246,40 @@ class ELF {
      */
 
   /**
-   * Helper for looking up a section's name in the section name string table
-   * (mSectionNames).
-   */
-  std::string& getSectionName(size_t sidx);
-
-  /**
    * ELF file header.
    */
   Elf32_Ehdr mHeader;
 
   /**
-   * Index of the section names string table's section header in
-   * mSectionHeaders.
+   * Index of the section name string table in mSections.
    */
-  uint32_t mSectionNamesIdx;
+  uint32_t mShStrTabIdx;
 
   /**
-   * List of section names.
+   * Index of the current string table in mSections.
    */
-  StringTable mSectionNames;
+  uint32_t mStrTabIdx;
 
   /**
-   * Index of the string table's section header in mSectionHeaders.
+   * Index of the current section in mSections.
    */
-  uint32_t mStringTableIdx;
+  uint32_t mCurrSection;
 
   /**
-   * Vector of strings that will turn into the string table.
+   * Vector of sections.
    */
-  StringTable mStringTable;
+  SectionList mSections;
 
   /**
-   * Vector of symbol tables.
+   * Index of the current relocation section (corresponding to the current
+   * progbits section) in mSections.
    */
-  std::vector<SymbolTable> mSymbolTables;
+  uint32_t mCurrRelIdx;
 
   /**
-   * Vector of relocation tables.
+   * Index of current symbol table in mSections.
    */
-  std::vector<RelocationSection> mRelocationSections;
-
-  /**
-   * Vector of section headers.
-   */
-  SectionHeaderTable mSectionHeaders;
-
-  /**
-   * Index of the current symbol table's section header in mSectionHeaders.
-   */
-  uint16_t mCurrSymTab;
-
-  /**
-   * Index of the relocation section's header in mSectionHeaders.
-   *
-   * TODO: There should a relocation table for every section (.text, .rodata,
-   * etc.)
-   */
-  uint16_t mCurrRelocSec;
-
-  /**
-   * Index of the current table in mSymbolTables.
-   */
-  uint32_t mSymbolTableIdx;
-
-  /**
-   * Index of the current relocation table in mRelocationSections.
-   */
-  uint32_t mRelocationSectionIdx;
-
-  /**
-   * Initialized data in program memory.
-   */
-  std::vector<uint8_t> mData;
-  uint32_t mDataIdx;
-
-  /**
-   * Read-only (const) data.
-   */
-  std::vector<uint8_t> mRodata;
-
-  /**
-   * Index of the .rodata section header in mSectionHeaders.
-   */
-  uint32_t mRodataIdx;
-
-  /**
-   * Uninitialized data in program memory.
-   */
-  std::vector<uint8_t> mBss;
-
-  /**
-   * Index of the .bss section header in mSectionHeaders.
-   */
-  uint32_t mBssIdx;
-
-  /**
-   * Executable instructions.
-   */
-  std::vector<uint8_t> mText;
-
-  /**
-   * Index of the .text section header in mSectionHeaders.
-   */
-  uint32_t mTextIdx;
-
-  /**
-   * Executable instructions to be run during initialization.
-   */
-  std::vector<uint8_t> mInit;
-
-  /**
-   * Index of the .init section header in mSectionHeaders.
-   */
-  uint32_t mInitIdx;
+  uint32_t mCurrSymTabIdx;
 
   /**
    * While this could eat up a lot of memory for a huge program, it's a lot

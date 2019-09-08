@@ -9,7 +9,7 @@
 using namespace AST;
 using namespace GBAS;
 
-Assembler::Assembler() : mCurrSectionType{SectionType::INVALID} { }
+Assembler::Assembler() { }
 
 void Assembler::assemble(std::shared_ptr<AST::Root> ast, ELF& elf) {
   // This could live on the stack
@@ -22,12 +22,7 @@ void Assembler::assemble(std::shared_ptr<AST::Root> ast, ELF& elf) {
           switch (directive->type()) {
             case DirectiveType::SECTION:
               {
-                auto sectionType = stringToSectionType(directive->operands().at(0));
-                if (sectionType == SectionType::INVALID) {
-                  throw AssemblerException{"Invalid section name"};
-                } else {
-                  mCurrSectionType = sectionType;
-                }
+                elf.setSection(directive->operands().at(0));
               }
               break;
             default:
@@ -36,7 +31,6 @@ void Assembler::assemble(std::shared_ptr<AST::Root> ast, ELF& elf) {
         }
         break;
       case NodeType::INSTRUCTION:
-        mCurrSectionType = SectionType::TEXT;
         assembleInstruction(elf,
                             *std::dynamic_pointer_cast<BaseInstruction>(node));
         break;
@@ -47,35 +41,36 @@ void Assembler::assemble(std::shared_ptr<AST::Root> ast, ELF& elf) {
           uint8_t info = ELF32_ST_BIND(STB_GLOBAL);
           uint16_t other;
           // TODO support bindings other than GLOBAL
-          switch (mCurrSectionType) {
-            case SectionType::DATA:
-              value = elf.dataSize();
-              info |= ELF32_ST_TYPE(STT_OBJECT);
-              other = elf.dataIdx();
-              break;
-            case SectionType::RODATA:
-              value = elf.rodataSize();
-              info |= ELF32_ST_TYPE(STT_OBJECT);
-              other = elf.rodataIdx();
-              break;
-            case SectionType::BSS:
-              value = elf.bssSize();
-              info |= ELF32_ST_TYPE(STT_OBJECT);
-              other = elf.bssIdx();
-              break;
-            case SectionType::TEXT:
-              value = elf.textSize();
-              info |= ELF32_ST_TYPE(STT_FUNC);
-              other = elf.textIdx();
-              break;
-            case SectionType::INIT:
-              value = elf.initSize();
-              info |= ELF32_ST_TYPE(STT_FUNC);
-              other = elf.initIdx();
-              break;
-            default:
-              throw AssemblerException("Invalid section type");
-          }
+          // TODO add checks for info in ELF
+          //switch (mCurrSectionType) {
+          //  case SectionType::DATA:
+          //    value = elf.dataSize();
+          //    info |= ELF32_ST_TYPE(STT_OBJECT);
+          //    other = elf.dataIdx();
+          //    break;
+          //  case SectionType::RODATA:
+          //    value = elf.rodataSize();
+          //    info |= ELF32_ST_TYPE(STT_OBJECT);
+          //    other = elf.rodataIdx();
+          //    break;
+          //  case SectionType::BSS:
+          //    value = elf.bssSize();
+          //    info |= ELF32_ST_TYPE(STT_OBJECT);
+          //    other = elf.bssIdx();
+          //    break;
+          //  case SectionType::TEXT:
+          //    value = elf.textSize();
+          //    info |= ELF32_ST_TYPE(STT_FUNC);
+          //    other = elf.textIdx();
+          //    break;
+          //  case SectionType::INIT:
+          //    value = elf.initSize();
+          //    info |= ELF32_ST_TYPE(STT_FUNC);
+          //    other = elf.initIdx();
+          //    break;
+          //  default:
+          //    throw AssemblerException("Invalid section type");
+          //}
           // TODO relocatable
           //elf.addSymbol(label->name(), value, 0, info, STV_DEFAULT, other, true);
           elf.addSymbol(label->name(), value, 0, info, STV_DEFAULT, other, false);
@@ -478,7 +473,7 @@ void Assembler::assembleInstruction(ELF& elf, BaseInstruction& instr) {
               return (fmt.first == OperandType::INVALID) &&
                      (fmt.second == OperandType::INVALID);
             })) {
-          elf.addText(std::vector<uint8_t>{InstructionNone{instr0.type()}.encode()});
+          elf.addProgbits(std::vector<uint8_t>{InstructionNone{instr0.type()}.encode()});
         } else {
           throw AssemblerException("Invalid instruction0 usage");
         }
@@ -504,7 +499,7 @@ void Assembler::assembleInstruction(ELF& elf, BaseInstruction& instr) {
             switch (instr1.type()) {
               case InstructionType::INC:
               case InstructionType::DEC:
-                elf.addText(instructionR(instr1, *reg));
+                elf.addProgbits(instructionR(instr1, *reg));
                 return;
                 break;
               case InstructionType::SUB:
@@ -513,7 +508,7 @@ void Assembler::assembleInstruction(ELF& elf, BaseInstruction& instr) {
               case InstructionType::XOR:
               case InstructionType::OR:
               case InstructionType::CP:
-                elf.addText(instructionRA(instr1, *reg));
+                elf.addProgbits(instructionRA(instr1, *reg));
                 return;
                 break;
               default:
@@ -528,7 +523,7 @@ void Assembler::assembleInstruction(ELF& elf, BaseInstruction& instr) {
               case InstructionType::DEC:
               case InstructionType::POP:
               case InstructionType::PUSH:
-                elf.addText(instructionD(instr1, *reg));
+                elf.addProgbits(instructionD(instr1, *reg));
                 return;
                 break;
               default:
@@ -545,7 +540,7 @@ void Assembler::assembleInstruction(ELF& elf, BaseInstruction& instr) {
                 std::vector<uint8_t> encoded{
                     InstructionA{instr1.type(), reg->reg1(), reg->reg2()}
                         .encode()};
-                elf.addText(encoded);
+                elf.addProgbits(encoded);
               }
                 return;
                 break;
