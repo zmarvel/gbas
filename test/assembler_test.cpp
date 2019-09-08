@@ -693,24 +693,13 @@ BOOST_AUTO_TEST_CASE(assembler_test_assemble_instructionNone) {
   assembler.assemble(ast, elf);
 
   auto expected = std::vector<uint8_t>{InstructionNone{InstructionType::NOP}.encode()};
-  BOOST_CHECK(elf.getText() == expected);
+  auto& text = dynamic_cast<ProgramSection&>(elf.getSection("text"));
+  BOOST_CHECK(text.data() == expected);
 }
 
 BOOST_AUTO_TEST_CASE(assembler_test_assemble_directive) {
   using namespace AST;
   using namespace GBAS;
-  {
-    ELFWrapper elf{};
-
-    Assembler assembler{};
-    BOOST_CHECK(assembler.currentSectionType() == GBAS::SectionType::INVALID);
-
-    auto ast = std::make_shared<Root>();
-    ast->add(std::make_shared<Directive>(DirectiveType::SECTION, Directive::OperandList{".text"}));
-    assembler.assemble(ast, elf);
-
-    BOOST_CHECK(assembler.currentSectionType() == GBAS::SectionType::TEXT);
-  }
   {
     ELFWrapper elf{};
     auto ast = std::make_shared<Root>();
@@ -721,7 +710,8 @@ BOOST_AUTO_TEST_CASE(assembler_test_assemble_directive) {
     assembler.assemble(ast, elf);
 
     auto expected = std::vector<uint8_t>{InstructionNone{InstructionType::NOP}.encode()};
-    BOOST_CHECK(elf.getText() == expected);
+    auto& text = dynamic_cast<ProgramSection&>(elf.getSection("text"));
+    BOOST_CHECK(text.data() == expected);
   }
 }
 
@@ -739,7 +729,8 @@ BOOST_AUTO_TEST_CASE(assembler_test_assemble_label) {
   assembler.assemble(ast, elf);
 
   auto expected = std::vector<uint8_t>{InstructionNone{InstructionType::NOP}.encode()};
-  BOOST_CHECK(elf.getText() == expected);
+  auto& text = dynamic_cast<ProgramSection&>(elf.getSection("text"));
+  BOOST_CHECK(text.data() == expected);
 }
 
 BOOST_AUTO_TEST_SUITE_END();

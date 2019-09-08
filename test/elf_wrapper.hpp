@@ -11,27 +11,24 @@ class ELFWrapper : public ELF {
   ELFWrapper() : ELF{} {}
 
   Elf32_Ehdr& getHeader() { return mHeader; }
-  uint32_t getSectionNamesIdx() { return mSectionNamesIdx; }
-  StringTable& getSectionNames() { return mSectionNames; }
-  uint32_t getStringTableIdx() { return mStringTableIdx; }
-  StringTable& getStringTable() { return mStringTable; }
-  std::vector<SymbolTable>& getSymbolTables() { return mSymbolTables; }
-  std::vector<RelocationSection>& getRelocationSections() {
-    return mRelocationSections;
+  uint32_t getShStrTabIdx() { return mShStrTabIdx; }
+  StrTabSection& getShStringTable() { return shStringTable(); }
+  uint32_t getStrTabIdx() { return mStrTabIdx; }
+  StrTabSection& getStringTable() { return stringTable(); }
+  SymTabSection& getSymbolTable() { return currentSymbolTable(); }
+  uint16_t getCurrSymTabIdx() { return mCurrSymTabIdx; }
+  RelSection& getRelocationSection() { return currentRelocationSection(); }
+  uint16_t getCurrRelIdx() { return mCurrRelIdx; }
+  ISection& getSection(const std::string& name) {
+    auto it = std::find_if(mSections.begin(), mSections.end(),
+        [&](auto sec) { return sec.name() == name; });
+    if (it == mSections.end()) {
+      std::ostringstream builder{};
+      builder << "Section " << name << " not found";
+      throw ELFException{builder.str()};
+    }
+    return *it;
   }
-  SectionHeaderTable& getSectionHeaders() { return mSectionHeaders; }
-  uint16_t getCurrSymTabIdx() { return mCurrSymTab; }
-
-  std::vector<uint8_t>& getData() { return mData; }
-  uint32_t getDataIdx() { return mDataIdx; }
-  std::vector<uint8_t>& getRodata() { return mRodata; }
-  uint32_t getRodataIdx() { return mRodataIdx; }
-  std::vector<uint8_t>& getBss() { return mBss; }
-  uint32_t getBssIdx() { return mBssIdx; }
-  std::vector<uint8_t>& getText() { return mText; }
-  uint32_t getTextIdx() { return mTextIdx; }
-  std::vector<uint8_t>& getInit() { return mInit; }
-  uint32_t getInitIdx() { return mInitIdx; }
 
   std::unordered_set<std::string>& getSymbolNames() { return mSymbolNames; }
 };

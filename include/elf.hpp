@@ -251,24 +251,30 @@ class ELF {
   Elf32_Ehdr mHeader;
 
   /**
+   * Vector of sections.
+   */
+  SectionList mSections;
+
+  /**
    * Index of the section name string table in mSections.
    */
   uint32_t mShStrTabIdx;
+
+  StrTabSection& shStringTable() { return dynamic_cast<StrTabSection&>(mSections.at(mShStrTabIdx)); }
 
   /**
    * Index of the current string table in mSections.
    */
   uint32_t mStrTabIdx;
 
+  StrTabSection& stringTable() { return dynamic_cast<StrTabSection&>(mSections.at(mStrTabIdx)); }
+
   /**
    * Index of the current section in mSections.
    */
   uint32_t mCurrSection;
 
-  /**
-   * Vector of sections.
-   */
-  SectionList mSections;
+  ISection& currentSection() { return mSections.at(mCurrSection); }
 
   /**
    * Index of the current relocation section (corresponding to the current
@@ -276,10 +282,14 @@ class ELF {
    */
   uint32_t mCurrRelIdx;
 
+  RelSection& currentRelocationSection() { return dynamic_cast<RelSection&>(mSections.at(mCurrRelIdx)); }
+
   /**
    * Index of current symbol table in mSections.
    */
   uint32_t mCurrSymTabIdx;
+
+  SymTabSection& currentSymbolTable() { return dynamic_cast<SymTabSection&>(mSections.at(mCurrSymTabIdx)); }
 
   /**
    * While this could eat up a lot of memory for a huge program, it's a lot
