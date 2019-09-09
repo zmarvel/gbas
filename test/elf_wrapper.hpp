@@ -21,14 +21,14 @@ class ELFWrapper : public ELF {
   uint16_t getCurrRelIdx() { return mCurrRelIdx; }
   ISection& getSection(const std::string& name) {
     auto it = std::find_if(mSections.begin(), mSections.end(),
-        [&](auto sec) { return sec.name() == name; });
+        [&](auto& sec) { return sec->name() == name; });
     if (it == mSections.end()) {
       std::ostringstream builder{};
       builder << "Section " << name << " not found";
       std::cerr << builder.str() << std::endl;
       throw ELFException{builder.str()};
     }
-    return *it;
+    return *(*it);
   }
 
   std::unordered_set<std::string>& getSymbolNames() { return mSymbolNames; }

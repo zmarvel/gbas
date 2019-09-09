@@ -44,10 +44,10 @@ BOOST_AUTO_TEST_CASE(elf_test_constructor) {
   BOOST_CHECK_EQUAL(elfHeader.e_phentsize, sizeof(Elf32_Phdr));
   BOOST_CHECK_EQUAL(elfHeader.e_phnum, 0);
   BOOST_CHECK_EQUAL(elfHeader.e_shentsize, sizeof(Elf32_Shdr));
-  // This is 0 in the beginning of the constructor, but should be 2 after
-  // adding the two string tables.
-  // TODO and eventuall rodata, etc.
-  BOOST_CHECK_EQUAL(elfHeader.e_shnum, 9);
+  // This is 0 until just before we write out the file. Section objects own
+  // their headers, and ELF.mSections can be traversed to figure out the number
+  // of section headers.
+  BOOST_CHECK_EQUAL(elfHeader.e_shnum, 0);
   
   // Test the section name string table .shstrtab
   {
@@ -72,7 +72,9 @@ BOOST_AUTO_TEST_CASE(elf_test_constructor) {
 
     BOOST_CHECK_EQUAL(strTab.name(), "strtab");
     Elf32_Shdr& hdr = strTab.header();
-    BOOST_CHECK_EQUAL(hdr.sh_name, 1);
+    // sh_name is filled out just before writing the structure to a real ELF
+    // file.
+    BOOST_CHECK_EQUAL(hdr.sh_name, 0);
     BOOST_CHECK_EQUAL(hdr.sh_type, SHT_STRTAB);
     BOOST_CHECK_EQUAL(hdr.sh_flags, 0);
     BOOST_CHECK_EQUAL(hdr.sh_addr, 0);
@@ -90,7 +92,7 @@ BOOST_AUTO_TEST_CASE(elf_test_constructor) {
       dynamic_cast<ProgramSection&>(elf.getSection("data"));
     BOOST_CHECK_EQUAL(progbits.name(), "data");
     Elf32_Shdr& hdr = progbits.header();
-    BOOST_CHECK_EQUAL(hdr.sh_name, 2);
+    BOOST_CHECK_EQUAL(hdr.sh_name, 0);
     BOOST_CHECK_EQUAL(hdr.sh_type, SHT_PROGBITS);
     BOOST_CHECK_EQUAL(hdr.sh_flags, SHF_ALLOC | SHF_WRITE);
     BOOST_CHECK_EQUAL(hdr.sh_addr, 0);
@@ -108,7 +110,7 @@ BOOST_AUTO_TEST_CASE(elf_test_constructor) {
       dynamic_cast<ProgramSection&>(elf.getSection("rodata"));
     BOOST_CHECK_EQUAL(progbits.name(), "rodata");
     Elf32_Shdr& hdr = progbits.header();
-    BOOST_CHECK_EQUAL(hdr.sh_name, 3);
+    BOOST_CHECK_EQUAL(hdr.sh_name, 0);
     BOOST_CHECK_EQUAL(hdr.sh_type, SHT_PROGBITS);
     BOOST_CHECK_EQUAL(hdr.sh_flags, SHF_ALLOC);
     BOOST_CHECK_EQUAL(hdr.sh_addr, 0);
@@ -126,7 +128,7 @@ BOOST_AUTO_TEST_CASE(elf_test_constructor) {
       dynamic_cast<ProgramSection&>(elf.getSection("bss"));
     BOOST_CHECK_EQUAL(progbits.name(), "bss");
     Elf32_Shdr& hdr = progbits.header();
-    BOOST_CHECK_EQUAL(hdr.sh_name, 4);
+    BOOST_CHECK_EQUAL(hdr.sh_name, 0);
     BOOST_CHECK_EQUAL(hdr.sh_type, SHT_NOBITS);
     BOOST_CHECK_EQUAL(hdr.sh_flags, SHF_ALLOC | SHF_WRITE);
     BOOST_CHECK_EQUAL(hdr.sh_addr, 0);
@@ -144,7 +146,7 @@ BOOST_AUTO_TEST_CASE(elf_test_constructor) {
       dynamic_cast<ProgramSection&>(elf.getSection("text"));
     BOOST_CHECK_EQUAL(progbits.name(), "text");
     Elf32_Shdr& hdr = progbits.header();
-    BOOST_CHECK_EQUAL(hdr.sh_name, 5);
+    BOOST_CHECK_EQUAL(hdr.sh_name, 0);
     BOOST_CHECK_EQUAL(hdr.sh_type, SHT_PROGBITS);
     BOOST_CHECK_EQUAL(hdr.sh_flags, SHF_ALLOC | SHF_EXECINSTR);
     BOOST_CHECK_EQUAL(hdr.sh_addr, 0);
@@ -162,7 +164,7 @@ BOOST_AUTO_TEST_CASE(elf_test_constructor) {
       dynamic_cast<ProgramSection&>(elf.getSection("init"));
     BOOST_CHECK_EQUAL(progbits.name(), "init");
     Elf32_Shdr& hdr = progbits.header();
-    BOOST_CHECK_EQUAL(hdr.sh_name, 6);
+    BOOST_CHECK_EQUAL(hdr.sh_name, 0);
     BOOST_CHECK_EQUAL(hdr.sh_type, SHT_PROGBITS);
     BOOST_CHECK_EQUAL(hdr.sh_flags, SHF_ALLOC | SHF_EXECINSTR);
     BOOST_CHECK_EQUAL(hdr.sh_addr, 0);
@@ -176,11 +178,11 @@ BOOST_AUTO_TEST_CASE(elf_test_constructor) {
 
   // Test the symbol table
   {
-    ProgramSection& progbits =
-      dynamic_cast<ProgramSection&>(elf.getSection("symtab"));
-    BOOST_CHECK_EQUAL(progbits.name(), "symtab");
-    Elf32_Shdr& hdr = progbits.header();
-    BOOST_CHECK_EQUAL(hdr.sh_name, 7);
+    SymTabSection& symtab = 
+      dynamic_cast<SymTabSection&>(elf.getSymbolTable());
+    BOOST_CHECK_EQUAL(symtab.name(), "symtab");
+    Elf32_Shdr& hdr = symtab.header();
+    BOOST_CHECK_EQUAL(hdr.sh_name, 0);
     BOOST_CHECK_EQUAL(hdr.sh_type, SHT_SYMTAB);
     BOOST_CHECK_EQUAL(hdr.sh_flags, SHF_ALLOC);
     BOOST_CHECK_EQUAL(hdr.sh_addr, 0);
@@ -207,13 +209,7 @@ BOOST_AUTO_TEST_CASE(elf_test_addString) {
 BOOST_AUTO_TEST_CASE(elf_test_addSymbol) {
   ELFWrapper elf{};
 
-  // Attempting to define a symbol when the current section is not a symbol
-  // table should throw an exception
-  {
-    // elf.addSymbol("asdf", 0, 0, 0, 0, 1, false);
-    //BOOST_CHECK_THROW(elf.addSymbol("asdf", 0, 0, 0, 0, 1, false),
-    //                  ELFException);
-  }
+  elf.setSection("data");
 
   // TODO invalid names should fail
   // TODO invalid sizes should fail
@@ -222,9 +218,9 @@ BOOST_AUTO_TEST_CASE(elf_test_addSymbol) {
 
   // Attempting to redefine a symbol should throw an exception
   {
-    auto& ret =
-        elf.addSymbol("asdf", 1234, 0, ELF32_ST_INFO(STT_OBJECT, STB_LOCAL),
-                      STV_DEFAULT, 1, false);
+    auto& ret = elf.addSymbol("asdf", 1234, 0,
+                              ELF32_ST_INFO(STT_OBJECT, STB_LOCAL),
+                              STV_DEFAULT, 1, false);
     BOOST_CHECK_THROW(elf.addSymbol("asdf", 0, 0, 0, 0, 1, false),
                       ELFException);
 
@@ -235,7 +231,12 @@ BOOST_AUTO_TEST_CASE(elf_test_addSymbol) {
     BOOST_CHECK_EQUAL(ret.st_info, ELF32_ST_INFO(STT_OBJECT, STB_LOCAL));
     BOOST_CHECK_EQUAL(ret.st_other, STV_DEFAULT);
     BOOST_CHECK_EQUAL(ret.st_shndx, 1);
+    try {
     BOOST_CHECK_EQUAL(elf.getStringTable().strings().at(ret.st_name), "asdf");
+    } catch (std::out_of_range& e) {
+      std::cerr << "st_name out of range: " << ret.st_name << std::endl;
+      throw e;
+    }
 
     // Now let's check that our symbol got added properly
     auto& ent = elf.getSymbolTable().symbols().at(1);

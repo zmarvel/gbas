@@ -69,7 +69,7 @@ ELF::ELF()
 
   // Section header for section names string table
   mShStrTabIdx = mSections.size();
-  mSections.emplace_back(StrTabSection{"shstrtab", Elf32_Shdr{
+  mSections.emplace_back(std::make_unique<StrTabSection>("shstrtab", Elf32_Shdr{
       // This section's name will be first in the section names table
       .sh_name = 0,
       .sh_type = SHT_STRTAB,
@@ -81,11 +81,11 @@ ELF::ELF()
       .sh_link = 0,
       .sh_info = 0,
       .sh_addralign = 0,
-      .sh_entsize = 0}});
+      .sh_entsize = 0}));
 
   // Section header for string table
   mStrTabIdx = mSections.size();
-  mSections.emplace_back(StrTabSection{"strtab", Elf32_Shdr{
+  mSections.emplace_back(std::make_unique<StrTabSection>("strtab", Elf32_Shdr{
       // This section's name will be first in the section names table
       .sh_name = 0,
       .sh_type = SHT_STRTAB,
@@ -97,10 +97,25 @@ ELF::ELF()
       .sh_link = 0,
       .sh_info = 0,
       .sh_addralign = 0,
-      .sh_entsize = 0}});
+      .sh_entsize = 0}));
+
+  // data section
+  mSections.emplace_back(std::make_unique<ProgramSection>("data",
+      Elf32_Shdr{.sh_name = 0,
+      .sh_type = SHT_PROGBITS,
+      .sh_flags = SHF_ALLOC | SHF_WRITE,
+      .sh_addr = 0,
+      // TODO we have to fill this in just before writing the file
+      .sh_offset = 0,
+      .sh_size = 0,
+      .sh_link = 0,
+      .sh_info = 0,
+      .sh_addralign = 0,
+      .sh_entsize = 0}));
+
 
   // rodata section
-  mSections.emplace_back(ProgramSection{"rodata",
+  mSections.emplace_back(std::make_unique<ProgramSection>("rodata",
       Elf32_Shdr{.sh_name = 0,
       .sh_type = SHT_PROGBITS,
       .sh_flags = SHF_ALLOC,
@@ -111,10 +126,10 @@ ELF::ELF()
       .sh_link = 0,
       .sh_info = 0,
       .sh_addralign = 0,
-      .sh_entsize = 0}});
+      .sh_entsize = 0}));
 
   // bss section
-  mSections.emplace_back(ProgramSection{"bss",
+  mSections.emplace_back(std::make_unique<ProgramSection>("bss",
       Elf32_Shdr{.sh_name = 0,
       .sh_type = SHT_NOBITS,
       .sh_flags = SHF_ALLOC | SHF_WRITE,
@@ -125,10 +140,10 @@ ELF::ELF()
       .sh_link = 0,
       .sh_info = 0,
       .sh_addralign = 0,
-      .sh_entsize = 0}});
+      .sh_entsize = 0}));
 
   // text section
-  mSections.emplace_back(ProgramSection{"text",
+  mSections.emplace_back(std::make_unique<ProgramSection>("text",
       Elf32_Shdr{.sh_name = 0,
       .sh_type = SHT_PROGBITS,
       .sh_flags = SHF_ALLOC | SHF_EXECINSTR,
@@ -139,10 +154,10 @@ ELF::ELF()
       .sh_link = 0,
       .sh_info = 0,
       .sh_addralign = 0,
-      .sh_entsize = 0}});
+      .sh_entsize = 0}));
 
   // init section
-  mSections.emplace_back(ProgramSection{"init", 
+  mSections.emplace_back(std::make_unique<ProgramSection>("init", 
       Elf32_Shdr{.sh_name = 0,
       .sh_type = SHT_PROGBITS,
       .sh_flags = SHF_ALLOC | SHF_EXECINSTR,
@@ -153,11 +168,11 @@ ELF::ELF()
       .sh_link = 0,
       .sh_info = 0,
       .sh_addralign = 0,
-      .sh_entsize = 0}});
+      .sh_entsize = 0}));
 
   // symbol table
   mCurrSymTabIdx = mSections.size();
-  mSections.emplace_back(SymTabSection{"symtab",
+  mSections.emplace_back(std::make_unique<SymTabSection>("symtab",
       Elf32_Shdr{.sh_name = 0,
       .sh_type = SHT_SYMTAB,
       .sh_flags = SHF_ALLOC,
@@ -167,7 +182,7 @@ ELF::ELF()
       .sh_link = 0,
       .sh_info = 0,
       .sh_addralign = 0,
-      .sh_entsize = sizeof(Elf32_Sym)}});
+      .sh_entsize = sizeof(Elf32_Sym)}));
 
   // relocation table
   auto progSections = std::vector<std::string>{
@@ -176,7 +191,7 @@ ELF::ELF()
   for (auto sec : progSections) {
     std::ostringstream builder{};
     builder << "rel" << sec;
-    mSections.emplace_back(RelSection{builder.str(),
+    mSections.emplace_back(std::make_unique<RelSection>(builder.str(),
         Elf32_Shdr{
         .sh_name = 0,
         .sh_type = SHT_REL,
@@ -187,7 +202,7 @@ ELF::ELF()
         .sh_link = 0,
         .sh_info = 0,
         .sh_addralign = 0,
-        .sh_entsize = sizeof(Elf32_Rel)}});
+        .sh_entsize = sizeof(Elf32_Rel)}));
   }
 }
 
@@ -238,7 +253,15 @@ ELF::ELF()
 //}
 
 void ELF::setSection(const std::string& name) {
-  // TODO
+  auto it = std::find_if(mSections.begin(), mSections.end(),
+                         [&](auto& sec) { return sec->name() == name; });
+  if (it == mSections.end()) {
+    std::ostringstream builder{};
+    builder << "Invalid section: " << name;
+    ELF_EXCEPTION(builder.str());
+  } else {
+    mCurrSection = std::distance(mSections.begin(), it);
+  }
 }
 
 Elf32_Sym& ELF::addSymbol(const std::string name, uint32_t value, uint32_t size,
@@ -253,15 +276,12 @@ Elf32_Sym& ELF::addSymbol(const std::string name, uint32_t value, uint32_t size,
     ELF_EXCEPTION(builder.str());
   }
 
-  auto& tbl = dynamic_cast<SymTabSection&>(mSections.at(mCurrSymTabIdx));
+  mSymbolNames.insert(name);
 
-  // TODO mSymbolNames.insert(name);
-
-  uint32_t idx = tbl.symbols().size();
-  auto& strTbl = dynamic_cast<StrTabSection&>(mSections.at(mStrTabIdx));
-  uint32_t nameIdx = strTbl.strings().size();
+  uint32_t idx = currentSymbolTable().symbols().size();
+  uint32_t nameIdx = stringTable().strings().size();
   addString(name);
-  tbl.symbols().emplace_back(Elf32_Sym{.st_name = nameIdx,
+  currentSymbolTable().symbols().emplace_back(Elf32_Sym{.st_name = nameIdx,
       .st_value = value,
       .st_size = size,
       .st_info = info,
@@ -271,35 +291,33 @@ Elf32_Sym& ELF::addSymbol(const std::string name, uint32_t value, uint32_t size,
   // If the symbol should be relocatable, find the corresponding section of
   // relocation information.
   if (relocatable) {
-    auto& relTbl = dynamic_cast<RelSection&>(mSections.at(mCurrRelIdx));
     // Search the section header table for a header of a relocation section
     // that points back to mCurrSymTab.
 
     // r_offset is the offset into the symbol table of the symbol we just added.
     // r_info is both the symbol's index in the symbol table and the type of
     // relocation that should occur.
-    relTbl.relocations().emplace_back(
+    currentRelocationSection().relocations().emplace_back(
         Elf32_Rel{.r_offset = static_cast<Elf32_Addr>(idx * sizeof(Elf32_Sym)),
         .r_info = ELF32_R_SYM(idx) | ELF32_R_TYPE(R_386_32)});
   }
 
-  return tbl.symbols().back();
+  return currentSymbolTable().symbols().back();
 }
 
 std::string& ELF::addString(const std::string& str) {
-  auto& strTbl = dynamic_cast<StrTabSection&>(mSections.at(mStrTabIdx));
   // size + null byte
-  strTbl.strings().push_back(str);
-  strTbl.header().sh_size += str.size() + 1;
-  return strTbl.strings().back();
+  stringTable().strings().push_back(str);
+  stringTable().header().sh_size += str.size() + 1;
+  return stringTable().strings().back();
 }
 
 void ELF::addProgbits(std::vector<uint8_t> data) {
-  if (mSections.at(mCurrSection).type() != SectionType::PROGBITS) {
+  if (currentSection().type() != SectionType::PROGBITS) {
     ELF_EXCEPTION("Attempted to add PROGBITS to non-PROGBITS section");
   }
 
-  auto& section = dynamic_cast<ProgramSection&>(mSections.at(mCurrSection));
+  auto& section = dynamic_cast<ProgramSection&>(currentSection());
   for (auto b : data) {
     section.data().push_back(b);
   }

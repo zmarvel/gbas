@@ -682,28 +682,31 @@ BOOST_AUTO_TEST_CASE(assembler_test_instructionNone) {
   }
 }
 
-BOOST_AUTO_TEST_CASE(assembler_test_assemble_instructionNone) {
-  using namespace AST;
-  using namespace GBAS;
-  ELFWrapper elf{};
-  auto ast = std::make_shared<Root>();
-  ast->add(std::make_shared<Instruction0>(InstructionType::NOP));
-
-  Assembler assembler{};
-  assembler.assemble(ast, elf);
-
-  auto expected = std::vector<uint8_t>{InstructionNone{InstructionType::NOP}.encode()};
-  auto& text = dynamic_cast<ProgramSection&>(elf.getSection("text"));
-  BOOST_CHECK(text.data() == expected);
-}
-
 BOOST_AUTO_TEST_CASE(assembler_test_assemble_directive) {
   using namespace AST;
   using namespace GBAS;
+  // Without setting the section first, we expect and exception due to invalid
+  // section type
   {
     ELFWrapper elf{};
     auto ast = std::make_shared<Root>();
-    ast->add(std::make_shared<Directive>(DirectiveType::SECTION, Directive::OperandList{".text"}));
+    ast->add(std::make_shared<Instruction0>(InstructionType::NOP));
+
+    Assembler assembler{};
+    BOOST_CHECK_THROW(assembler.assemble(ast, elf), ELFException);
+  }
+  {
+    ELFWrapper elf{};
+    auto ast = std::make_shared<Root>();
+    ast->add(std::make_shared<Directive>(DirectiveType::SECTION, Directive::OperandList{"text"}));
+
+    Assembler assembler{};
+    assembler.assemble(ast, elf);
+  }
+  {
+    ELFWrapper elf{};
+    auto ast = std::make_shared<Root>();
+    ast->add(std::make_shared<Directive>(DirectiveType::SECTION, Directive::OperandList{"text"}));
     ast->add(std::make_shared<Instruction0>(InstructionType::NOP));
 
     Assembler assembler{};
@@ -721,7 +724,7 @@ BOOST_AUTO_TEST_CASE(assembler_test_assemble_label) {
   ELFWrapper elf{};
   auto ast = std::make_shared<Root>();
   ast->add(std::make_shared<Directive>(DirectiveType::SECTION,
-        Directive::OperandList{".text"}));
+        Directive::OperandList{"text"}));
   ast->add(std::make_shared<Label>("nop"));
   ast->add(std::make_shared<Instruction0>(InstructionType::NOP));
 

@@ -170,7 +170,7 @@ class RelSection : public Section<SectionType::REL> {
     RelocationTable mRelocations;
 };
 
-using SectionList = std::vector<ISection>;
+using SectionList = std::vector<std::unique_ptr<ISection>>;
 
 /**
  * Models an ELF file, for the purposes of Game Boy programs. This means there
@@ -265,21 +265,21 @@ class ELF {
    */
   uint32_t mShStrTabIdx;
 
-  StrTabSection& shStringTable() { return dynamic_cast<StrTabSection&>(mSections.at(mShStrTabIdx)); }
+  StrTabSection& shStringTable() { return dynamic_cast<StrTabSection&>(*mSections.at(mShStrTabIdx)); }
 
   /**
    * Index of the current string table in mSections.
    */
   uint32_t mStrTabIdx;
 
-  StrTabSection& stringTable() { return dynamic_cast<StrTabSection&>(mSections.at(mStrTabIdx)); }
+  StrTabSection& stringTable() { return dynamic_cast<StrTabSection&>(*mSections.at(mStrTabIdx)); }
 
   /**
    * Index of the current section in mSections.
    */
   uint32_t mCurrSection;
 
-  ISection& currentSection() { return mSections.at(mCurrSection); }
+  ISection& currentSection() { return *mSections.at(mCurrSection); }
 
   /**
    * Index of the current relocation section (corresponding to the current
@@ -287,14 +287,14 @@ class ELF {
    */
   uint32_t mCurrRelIdx;
 
-  RelSection& currentRelocationSection() { return dynamic_cast<RelSection&>(mSections.at(mCurrRelIdx)); }
+  RelSection& currentRelocationSection() { return dynamic_cast<RelSection&>(*mSections.at(mCurrRelIdx)); }
 
   /**
    * Index of current symbol table in mSections.
    */
   uint32_t mCurrSymTabIdx;
 
-  SymTabSection& currentSymbolTable() { return dynamic_cast<SymTabSection&>(mSections.at(mCurrSymTabIdx)); }
+  SymTabSection& currentSymbolTable() { return dynamic_cast<SymTabSection&>(*mSections.at(mCurrSymTabIdx)); }
 
   /**
    * While this could eat up a lot of memory for a huge program, it's a lot
