@@ -51,6 +51,63 @@ class ISection {
 
     Elf32_Shdr& header() { return mHeader; }
 
+    class Type {
+      public:
+        // no type by default
+        Type() : mType{STT_NOTYPE} { }
+
+        Type noType() { return Type{STT_NOTYPE}; }
+        Type object() { return Type{STT_OBJECT}; }
+        Type function() { return Type{STT_FUNC}; }
+        Type section() { return Type{STT_SECTION}; }
+        Type file() { return Type{STT_FILE}; }
+
+        uint8_t type() {
+          return mType;
+        }
+
+      private:
+        Type(uint8_t type) : mType{type} { }
+
+        uint8_t mType;
+    };
+
+    class Binding {
+      public:
+        // global by default
+        Binding() : mBinding{STB_GLOBAL} { }
+
+        Binding local() { return Binding{STB_LOCAL}; }
+        Binding global() { return Binding{STB_GLOBAL}; }
+        Binding weak() { return Binding{STB_WEAK}; }
+
+        uint8_t binding() { return mBinding; }
+
+      private:
+        Binding(uint8_t type) : mBinding{type} { }
+
+        uint8_t mBinding;
+    };
+
+    class Visibility {
+      public:
+        // default visibility
+        Visibility() : mVisibility{STV_DEFAULT} { }
+
+        Visibility default_() { return Visibility{STV_DEFAULT}; }
+        Visibility internal() { return Visibility{STV_INTERNAL}; }
+        Visibility hidden() { return Visibility{STV_HIDDEN}; }
+        Visibility protected_() { return Visibility{STV_PROTECTED}; }
+
+        uint8_t visibility() { return mVisibility; }
+
+      private:
+        Visibility(uint8_t type) : mVisibility{type} { }
+
+        uint8_t mVisibility;
+    };
+
+
   private:
     std::string mName;
     Elf32_Shdr mHeader;
@@ -157,16 +214,20 @@ class RelSection : public Section<SectionType::REL> {
       , mRelocations{}
     { }
 
-    RelSection(std::string name, Elf32_Shdr hdr)
+    RelSection(std::string name, Elf32_Shdr hdr, std::string other)
       : Section<SectionType::REL>(name, hdr)
+      , mOther{other}
       , mRelocations{}
     { }
+
+    const std::string& other() { return mOther; }
 
     RelocationTable& relocations() {
       return mRelocations;
     }
 
   private:
+    std::string mOther;
     RelocationTable mRelocations;
 };
 
@@ -179,6 +240,14 @@ using SectionList = std::vector<std::unique_ptr<ISection>>;
 class ELF {
  public:
   ELF();
+
+  /**
+   * Add a section. Only in-place construction supported.
+   *
+   * @param section: rvalue reference to ISection unique_ptr.
+   * @param relocatable: Should a corresponding RelocationSection be created?
+   */
+  void addSection(std::unique_ptr<ISection>&& section, bool relocatable = true);
 
   void write(std::ostream& out);
 
@@ -201,8 +270,8 @@ class ELF {
    * @throws ELFException if a symbol with that name already exists.
    */
   Elf32_Sym& addSymbol(const std::string name, uint32_t value, uint32_t size,
-                       uint8_t info, uint8_t visibility, uint16_t other,
-                       bool relocatable);
+      ISection::Type type, ISection::Binding bind,
+      ISection::Visibility visibility, bool relocatable);
 
   /**
    * Add str to the string table.
@@ -217,11 +286,19 @@ class ELF {
   void addProgbits(std::vector<uint8_t> data);
 
   /**
+   * Add some data to a PROGBITS section.
+   *
+   * @param pData: Pointer to bytes that will be copied.
+   * @param n: How many bytes will be copied.
+   */
+  void addProgbits(uint8_t* pData, size_t n);
+
+  /**
    * Change the current section.
    *
    * @param name: Name of an already-created section.
    */
-  void setSection(const std::string& name);
+  ISection& setSection(const std::string& name);
 
   /**
    * Go through each section header and compute each section's offset. If any

@@ -2,6 +2,8 @@
 #ifndef ELF_WRAPPER_H
 #define ELF_WRAPPER_H
 
+#include <algorithm>
+
 #include "elf.hpp"
 
 namespace GBAS {
@@ -29,6 +31,17 @@ class ELFWrapper : public ELF {
       throw ELFException{builder.str()};
     }
     return *(*it);
+  }
+  size_t getSectionIdx(const std::string& name) {
+    auto it = std::find_if(mSections.begin(), mSections.end(),
+        [&](auto& sec) { return sec->name() == name; });
+    if (it == mSections.end()) {
+      std::ostringstream builder{};
+      builder << "Section " << name << " not found";
+      std::cerr << builder.str() << std::endl;
+      throw ELFException{builder.str()};
+    }
+    return std::distance(mSections.begin(), it);
   }
 
   std::unordered_set<std::string>& getSymbolNames() { return mSymbolNames; }

@@ -186,24 +186,46 @@ ELF::ELF()
       .sh_entsize = sizeof(Elf32_Sym)}));
 
   // relocation table
-  const auto progSections = std::array<std::string_view, 4>{
-    "rodata", "bss", "text", "init",
-  };
-  for (auto sec : progSections) {
+  //const auto progSections = std::array<std::string_view, 4>{
+  //  "rodata", "bss", "text", "init",
+  //};
+  //for (auto sec : progSections) {
+  //  std::ostringstream builder{};
+  //  builder << "rel" << sec;
+  //  mSections.emplace_back(std::make_unique<RelSection>(builder.str(),
+  //      Elf32_Shdr{
+  //      .sh_name = 0,
+  //      .sh_type = SHT_REL,
+  //      .sh_flags = 0,
+  //      .sh_addr = 0,
+  //      .sh_offset = 0,
+  //      .sh_size = 0,
+  //      .sh_link = 0,
+  //      .sh_info = 0,
+  //      .sh_addralign = 0,
+  //      .sh_entsize = sizeof(Elf32_Rel)}));
+  //}
+}
+
+void ELF::addSection(std::unique_ptr<ISection>&& section, bool relocatable) {
+  mSections.emplace_back(std::move(section));
+  if (relocatable) {
     std::ostringstream builder{};
-    builder << "rel" << sec;
-    mSections.emplace_back(std::make_unique<RelSection>(builder.str(),
-        Elf32_Shdr{
-        .sh_name = 0,
-        .sh_type = SHT_REL,
-        .sh_flags = 0,
-        .sh_addr = 0,
-        .sh_offset = 0,
-        .sh_size = 0,
-        .sh_link = 0,
-        .sh_info = 0,
-        .sh_addralign = 0,
-        .sh_entsize = sizeof(Elf32_Rel)}));
+    builder << "rel" << mSections.back()->name();
+    mSections.emplace_back(std::make_unique<RelSection>(
+          builder.str(),
+          Elf32_Shdr{
+          .sh_name = 0,
+          .sh_type = SHT_REL,
+          .sh_flags = 0,
+          .sh_addr = 0,
+          .sh_offset = 0,
+          .sh_size = 0,
+          .sh_link = 0,
+          .sh_info = 0,
+          .sh_addralign = 0,
+          .sh_entsize = sizeof(Elf32_Rel)},
+          mSections.back()->name()));
   }
 }
 
@@ -253,7 +275,7 @@ ELF::ELF()
 //  }
 //}
 
-void ELF::setSection(const std::string& name) {
+ISection& ELF::setSection(const std::string& name) {
   auto it = std::find_if(mSections.begin(), mSections.end(),
                          [&](auto& sec) { return sec->name() == name; });
   if (it == mSections.end()) {
@@ -262,12 +284,13 @@ void ELF::setSection(const std::string& name) {
     ELF_EXCEPTION(builder.str());
   } else {
     mCurrSection = std::distance(mSections.begin(), it);
+    return *mSections.at(mCurrSection);
   }
 }
 
 Elf32_Sym& ELF::addSymbol(const std::string name, uint32_t value, uint32_t size,
-                          uint8_t info, uint8_t visibility, uint16_t other,
-                          bool relocatable) {
+    ISection::Type type, ISection::Binding bind,
+    ISection::Visibility visibility, bool relocatable) {
   // TODO figure out info based on current section type
   // No other symbols in this file should have the same name
   if (mSymbolNames.find(name) != mSymbolNames.end()) {
@@ -285,9 +308,9 @@ Elf32_Sym& ELF::addSymbol(const std::string name, uint32_t value, uint32_t size,
   currentSymbolTable().symbols().emplace_back(Elf32_Sym{.st_name = nameIdx,
       .st_value = value,
       .st_size = size,
-      .st_info = info,
-      .st_other = visibility,
-      .st_shndx = other});
+      .st_info = ELF32_ST_INFO(bind.binding(), type.type()),
+      .st_other = ELF32_ST_VISIBILITY(visibility.visibility()),
+      .st_shndx = mCurrSection});
 
   // If the symbol should be relocatable, find the corresponding section of
   // relocation information.
@@ -319,7 +342,14 @@ void ELF::addProgbits(std::vector<uint8_t> data) {
   }
 
   auto& section = dynamic_cast<ProgramSection&>(currentSection());
-  for (auto b : data) {
-    section.data().push_back(b);
+  section.data().insert(section.data().end(), data.begin(), data.end());
+}
+
+void ELF::addProgbits(uint8_t* pData, size_t n) {
+  if (currentSection().type() != SectionType::PROGBITS) {
+    ELF_EXCEPTION("Attempted to add PROGBITS to non-PROGBITS section");
   }
+
+  auto& section = dynamic_cast<ProgramSection&>(currentSection());
+  section.data().insert(section.data().end(), pData, pData + n);
 }

@@ -73,7 +73,8 @@ void Assembler::assemble(std::shared_ptr<AST::Root> ast, ELF& elf) {
           //}
           // TODO relocatable
           //elf.addSymbol(label->name(), value, 0, info, STV_DEFAULT, other, true);
-          elf.addSymbol(label->name(), value, 0, info, STV_DEFAULT, other, false);
+          elf.addSymbol(label->name(), value, 0, ISection::Type{},
+              ISection::Binding{}.global(), ISection::Visibility{}, false);
         }
         break;
       default:

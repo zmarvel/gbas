@@ -219,18 +219,19 @@ BOOST_AUTO_TEST_CASE(elf_test_addSymbol) {
   // Attempting to redefine a symbol should throw an exception
   {
     auto& ret = elf.addSymbol("asdf", 1234, 0,
-                              ELF32_ST_INFO(STT_OBJECT, STB_LOCAL),
-                              STV_DEFAULT, 1, false);
-    BOOST_CHECK_THROW(elf.addSymbol("asdf", 0, 0, 0, 0, 1, false),
-                      ELFException);
+        ISection::Type{}.object(), ISection::Binding{}.local(),
+        ISection::Visibility{}, false);
+    BOOST_CHECK_THROW(elf.addSymbol("asdf", 0, 0, ISection::Type{}.object(),
+          ISection::Binding{}.local(), ISection::Visibility{}, false),
+        ELFException);
 
     // Make sure the return value is sane
     BOOST_CHECK_EQUAL(ret.st_name, 0);
     BOOST_CHECK_EQUAL(ret.st_value, 1234);
     BOOST_CHECK_EQUAL(ret.st_size, 0);
-    BOOST_CHECK_EQUAL(ret.st_info, ELF32_ST_INFO(STT_OBJECT, STB_LOCAL));
+    BOOST_CHECK_EQUAL(ret.st_info, ELF32_ST_INFO(STB_LOCAL, STT_OBJECT));
     BOOST_CHECK_EQUAL(ret.st_other, STV_DEFAULT);
-    BOOST_CHECK_EQUAL(ret.st_shndx, 1);
+    BOOST_CHECK_EQUAL(ret.st_shndx, elf.getSectionIdx("data"));
     BOOST_CHECK_EQUAL(elf.getStringTable().strings().at(ret.st_name), "asdf");
 
     // Now let's check that our symbol got added properly
@@ -238,9 +239,9 @@ BOOST_AUTO_TEST_CASE(elf_test_addSymbol) {
     BOOST_CHECK_EQUAL(ent.st_name, 0);
     BOOST_CHECK_EQUAL(ent.st_value, 1234);
     BOOST_CHECK_EQUAL(ent.st_size, 0);
-    BOOST_CHECK_EQUAL(ent.st_info, ELF32_ST_INFO(STT_OBJECT, STB_LOCAL));
+    BOOST_CHECK_EQUAL(ent.st_info, ELF32_ST_INFO(STB_LOCAL, STT_OBJECT));
     BOOST_CHECK_EQUAL(ent.st_other, STV_DEFAULT);
-    BOOST_CHECK_EQUAL(ent.st_shndx, 1);
+    BOOST_CHECK_EQUAL(ent.st_shndx, elf.getSectionIdx("data"));
     BOOST_CHECK_EQUAL(elf.getStringTable().strings().at(ent.st_name), "asdf");
   }
 }
@@ -307,6 +308,25 @@ BOOST_AUTO_TEST_CASE(elf_test_addData) {
       BOOST_CHECK_EQUAL(data[i], rInit.data()[i]);
     }
   }
+}
+
+BOOST_AUTO_TEST_CASE(elf_test_define_symbol) {
+  // - set the section
+  // - define a symbol
+  // - make sure we can look up the correct value
+  
+  ELFWrapper elf{};
+
+  auto& sec = elf.setSection("data");
+
+  uint32_t dataSym = 0x12345678;
+  elf.addProgbits(reinterpret_cast<uint8_t*>(&dataSym), sizeof(dataSym));
+
+  auto& dataSec = dynamic_cast<ProgramSection&>(sec);
+  BOOST_CHECK_EQUAL(dataSec.data().size(), sizeof(dataSym));
+
+  //elf.addSymbol("some_symbol", 
+  //    );
 }
 
 BOOST_AUTO_TEST_SUITE_END();
