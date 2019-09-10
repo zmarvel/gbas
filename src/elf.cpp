@@ -183,10 +183,19 @@ ELF::ELF()
       .sh_link = 0,
       .sh_info = 0,
       .sh_addralign = 0,
-      .sh_entsize = sizeof(Elf32_Sym)}));
+      .sh_entsize = sizeof(Elf32_Sym)}), false);
 }
 
 void ELF::addSection(std::unique_ptr<ISection>&& section, bool relocatable) {
+  // Only one section may have a given name
+  auto it = std::find_if(mSections.begin(), mSections.end(),
+      [&](auto& sec) { return sec->name() == section->name(); });
+  if (it != mSections.end()) {
+    std::ostringstream builder{};
+    builder << "Cannot add section with duplicate name: " << section->name();
+    ELF_EXCEPTION(builder.str());
+  }
+
   mSections.emplace_back(std::move(section));
   if (relocatable) {
     std::ostringstream builder{};
@@ -289,7 +298,7 @@ Elf32_Sym& ELF::addSymbol(const std::string name, uint32_t value, uint32_t size,
       .st_size = size,
       .st_info = ELF32_ST_INFO(bind.binding(), type.type()),
       .st_other = ELF32_ST_VISIBILITY(visibility.visibility()),
-      .st_shndx = mCurrSection});
+      .st_shndx = static_cast<uint8_t>(mCurrSection)});
 
   // If the symbol should be relocatable, find the corresponding section of
   // relocation information.

@@ -21,6 +21,12 @@ class ELFWrapper : public ELF {
   uint16_t getCurrSymTabIdx() { return mCurrSymTabIdx; }
   RelSection& getRelocationSection() { return currentRelocationSection(); }
   uint16_t getCurrRelIdx() { return mCurrRelIdx; }
+  SectionList& getSections() { return mSections; }
+
+  void addSection(std::unique_ptr<ISection>&& section, bool relocatable = true) {
+    ELF::addSection(std::move(section), relocatable);
+  }
+
   ISection& getSection(const std::string& name) {
     auto it = std::find_if(mSections.begin(), mSections.end(),
         [&](auto& sec) { return sec->name() == name; });
@@ -32,6 +38,7 @@ class ELFWrapper : public ELF {
     }
     return *(*it);
   }
+
   size_t getSectionIdx(const std::string& name) {
     auto it = std::find_if(mSections.begin(), mSections.end(),
         [&](auto& sec) { return sec->name() == name; });

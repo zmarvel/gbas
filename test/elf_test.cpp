@@ -48,6 +48,10 @@ BOOST_AUTO_TEST_CASE(elf_test_constructor) {
   // their headers, and ELF.mSections can be traversed to figure out the number
   // of section headers.
   BOOST_CHECK_EQUAL(elfHeader.e_shnum, 0);
+
+  // shstrtab, strtab, data, reldata, rodata, relrodata, bss, relbss, text,
+  // reltext, init, relinit, symtab
+  BOOST_CHECK_EQUAL(elf.getSections().size(), 13);
   
   // Test the section name string table .shstrtab
   {
@@ -194,6 +198,63 @@ BOOST_AUTO_TEST_CASE(elf_test_constructor) {
     BOOST_CHECK_EQUAL(hdr.sh_entsize, sizeof(Elf32_Sym));
   }
 
+}
+
+BOOST_AUTO_TEST_CASE(elf_test_addSection) {
+  // adding duplicate name should fail
+  {
+    ELFWrapper elf{};
+    BOOST_CHECK_THROW(elf.addSection(std::make_unique<SymTabSection>("symtab",
+            Elf32_Shdr{.sh_name = 0,
+            .sh_type = SHT_SYMTAB,
+            .sh_flags = SHF_ALLOC,
+            .sh_addr = 0,
+            .sh_offset = 0,
+            .sh_size = 0,
+            .sh_link = 0,
+            .sh_info = 0,
+            .sh_addralign = 0,
+            .sh_entsize = sizeof(Elf32_Sym)}), false), ELFException);
+  }
+
+  // without relocation section
+  {
+    ELFWrapper elf{};
+    size_t prevCount = elf.getSections().size();
+    elf.addSection(std::make_unique<SymTabSection>("new_section",
+          Elf32_Shdr{.sh_name = 0,
+          .sh_type = SHT_PROGBITS,
+          .sh_flags = SHF_ALLOC,
+          .sh_addr = 0,
+          .sh_offset = 0,
+          .sh_size = 0,
+          .sh_link = 0,
+          .sh_info = 0,
+          .sh_addralign = 0,
+          .sh_entsize = sizeof(Elf32_Sym)}), false);
+    BOOST_CHECK_EQUAL(elf.getSections().size(), prevCount + 1);
+    BOOST_CHECK(elf.getSection("new_section").header().sh_type == SHT_PROGBITS);
+  }
+
+  // with relocation section
+  {
+    ELFWrapper elf{};
+    size_t prevCount = elf.getSections().size();
+    elf.addSection(std::make_unique<SymTabSection>("new_section",
+          Elf32_Shdr{.sh_name = 0,
+          .sh_type = SHT_PROGBITS,
+          .sh_flags = SHF_ALLOC,
+          .sh_addr = 0,
+          .sh_offset = 0,
+          .sh_size = 0,
+          .sh_link = 0,
+          .sh_info = 0,
+          .sh_addralign = 0,
+          .sh_entsize = sizeof(Elf32_Sym)}), true);
+    BOOST_CHECK_EQUAL(elf.getSections().size(), prevCount + 2);
+    BOOST_CHECK(elf.getSection("new_section").header().sh_type == SHT_PROGBITS);
+    BOOST_CHECK(elf.getSection("relnew_section").header().sh_type == SHT_REL);
+  }
 }
 
 BOOST_AUTO_TEST_CASE(elf_test_addString) {
