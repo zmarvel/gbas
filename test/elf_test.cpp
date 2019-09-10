@@ -231,12 +231,7 @@ BOOST_AUTO_TEST_CASE(elf_test_addSymbol) {
     BOOST_CHECK_EQUAL(ret.st_info, ELF32_ST_INFO(STT_OBJECT, STB_LOCAL));
     BOOST_CHECK_EQUAL(ret.st_other, STV_DEFAULT);
     BOOST_CHECK_EQUAL(ret.st_shndx, 1);
-    try {
     BOOST_CHECK_EQUAL(elf.getStringTable().strings().at(ret.st_name), "asdf");
-    } catch (std::out_of_range& e) {
-      std::cerr << "st_name out of range: " << ret.st_name << std::endl;
-      throw e;
-    }
 
     // Now let's check that our symbol got added properly
     auto& ent = elf.getSymbolTable().symbols().at(1);

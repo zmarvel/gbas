@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <sstream>
+#include <string_view>
 
 #include "elf.hpp"
 
@@ -185,7 +186,7 @@ ELF::ELF()
       .sh_entsize = sizeof(Elf32_Sym)}));
 
   // relocation table
-  auto progSections = std::vector<std::string>{
+  const auto progSections = std::array<std::string_view, 4>{
     "rodata", "bss", "text", "init",
   };
   for (auto sec : progSections) {
