@@ -241,14 +241,6 @@ class ELF {
  public:
   ELF();
 
-  /**
-   * Add a section. Only in-place construction supported.
-   *
-   * @param section: rvalue reference to ISection unique_ptr.
-   * @param relocatable: Should a corresponding RelocationSection be created?
-   */
-  void addSection(std::unique_ptr<ISection>&& section, bool relocatable = true);
-
   void write(std::ostream& out);
 
   /**
@@ -308,6 +300,15 @@ class ELF {
   void computeSectionOffsets();
 
  protected:
+
+  /**
+   * Add a section. Only in-place construction supported.
+   *
+   * @param section: rvalue reference to ISection unique_ptr.
+   * @param relocatable: Should a corresponding RelocationSection be created?
+   */
+  void addSection(std::unique_ptr<ISection>&& section, bool relocatable = true);
+
   /*
      typedef struct {
      unsigned char e_ident[EI_NIDENT];

@@ -70,7 +70,7 @@ ELF::ELF()
 
   // Section header for section names string table
   mShStrTabIdx = mSections.size();
-  mSections.emplace_back(std::make_unique<StrTabSection>("shstrtab", Elf32_Shdr{
+  addSection(std::make_unique<StrTabSection>("shstrtab", Elf32_Shdr{
       // This section's name will be first in the section names table
       .sh_name = 0,
       .sh_type = SHT_STRTAB,
@@ -82,11 +82,11 @@ ELF::ELF()
       .sh_link = 0,
       .sh_info = 0,
       .sh_addralign = 0,
-      .sh_entsize = 0}));
+      .sh_entsize = 0}), false);
 
   // Section header for string table
   mStrTabIdx = mSections.size();
-  mSections.emplace_back(std::make_unique<StrTabSection>("strtab", Elf32_Shdr{
+  addSection(std::make_unique<StrTabSection>("strtab", Elf32_Shdr{
       // This section's name will be first in the section names table
       .sh_name = 0,
       .sh_type = SHT_STRTAB,
@@ -98,10 +98,10 @@ ELF::ELF()
       .sh_link = 0,
       .sh_info = 0,
       .sh_addralign = 0,
-      .sh_entsize = 0}));
+      .sh_entsize = 0}), false);
 
   // data section
-  mSections.emplace_back(std::make_unique<ProgramSection>("data",
+  addSection(std::make_unique<ProgramSection>("data",
       Elf32_Shdr{.sh_name = 0,
       .sh_type = SHT_PROGBITS,
       .sh_flags = SHF_ALLOC | SHF_WRITE,
@@ -116,7 +116,7 @@ ELF::ELF()
 
 
   // rodata section
-  mSections.emplace_back(std::make_unique<ProgramSection>("rodata",
+  addSection(std::make_unique<ProgramSection>("rodata",
       Elf32_Shdr{.sh_name = 0,
       .sh_type = SHT_PROGBITS,
       .sh_flags = SHF_ALLOC,
@@ -130,7 +130,7 @@ ELF::ELF()
       .sh_entsize = 0}));
 
   // bss section
-  mSections.emplace_back(std::make_unique<ProgramSection>("bss",
+  addSection(std::make_unique<ProgramSection>("bss",
       Elf32_Shdr{.sh_name = 0,
       .sh_type = SHT_NOBITS,
       .sh_flags = SHF_ALLOC | SHF_WRITE,
@@ -144,7 +144,7 @@ ELF::ELF()
       .sh_entsize = 0}));
 
   // text section
-  mSections.emplace_back(std::make_unique<ProgramSection>("text",
+  addSection(std::make_unique<ProgramSection>("text",
       Elf32_Shdr{.sh_name = 0,
       .sh_type = SHT_PROGBITS,
       .sh_flags = SHF_ALLOC | SHF_EXECINSTR,
@@ -158,7 +158,7 @@ ELF::ELF()
       .sh_entsize = 0}));
 
   // init section
-  mSections.emplace_back(std::make_unique<ProgramSection>("init", 
+  addSection(std::make_unique<ProgramSection>("init", 
       Elf32_Shdr{.sh_name = 0,
       .sh_type = SHT_PROGBITS,
       .sh_flags = SHF_ALLOC | SHF_EXECINSTR,
@@ -173,7 +173,7 @@ ELF::ELF()
 
   // symbol table
   mCurrSymTabIdx = mSections.size();
-  mSections.emplace_back(std::make_unique<SymTabSection>("symtab",
+  addSection(std::make_unique<SymTabSection>("symtab",
       Elf32_Shdr{.sh_name = 0,
       .sh_type = SHT_SYMTAB,
       .sh_flags = SHF_ALLOC,
@@ -184,27 +184,6 @@ ELF::ELF()
       .sh_info = 0,
       .sh_addralign = 0,
       .sh_entsize = sizeof(Elf32_Sym)}));
-
-  // relocation table
-  //const auto progSections = std::array<std::string_view, 4>{
-  //  "rodata", "bss", "text", "init",
-  //};
-  //for (auto sec : progSections) {
-  //  std::ostringstream builder{};
-  //  builder << "rel" << sec;
-  //  mSections.emplace_back(std::make_unique<RelSection>(builder.str(),
-  //      Elf32_Shdr{
-  //      .sh_name = 0,
-  //      .sh_type = SHT_REL,
-  //      .sh_flags = 0,
-  //      .sh_addr = 0,
-  //      .sh_offset = 0,
-  //      .sh_size = 0,
-  //      .sh_link = 0,
-  //      .sh_info = 0,
-  //      .sh_addralign = 0,
-  //      .sh_entsize = sizeof(Elf32_Rel)}));
-  //}
 }
 
 void ELF::addSection(std::unique_ptr<ISection>&& section, bool relocatable) {
