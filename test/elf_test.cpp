@@ -340,6 +340,25 @@ BOOST_AUTO_TEST_CASE(elf_test_addSymbol) {
     BOOST_CHECK_EQUAL(ent.st_shndx, elf.getSectionIdx("data"));
     BOOST_CHECK_EQUAL(elf.getStringTable().strings().at(ent.st_name), "asdf");
   }
+
+  // Should be able to define a relocatable symbol and find correct relocation
+  // information in the expected relocation section
+  {
+    ELFWrapper elf{};
+    elf.setSection("data");
+
+    auto& ret = elf.addSymbol("asdf", 5678, 0,
+        ISection::Type{}.function(), ISection::Binding{}.global(),
+        ISection::Visibility{}, true);
+
+    auto& relTab = dynamic_cast<RelSection&>(elf.getSection("reldata"));
+    BOOST_CHECK_EQUAL(relTab.relocations().size(), 1);
+    auto& relEnt = relTab.relocations().at(0);
+    BOOST_CHECK_EQUAL(relEnt.r_offset, 5678);
+    BOOST_CHECK_EQUAL(ELF32_R_SYM(relEnt.r_info),
+        elf.getSymbolTable().symbols().size() - 1);
+    BOOST_CHECK_EQUAL(ELF32_R_TYPE(relEnt.r_info), R_386_32);
+  }
 }
 
 /**

@@ -272,6 +272,13 @@ ISection& ELF::setSection(const std::string& name) {
     ELF_EXCEPTION(builder.str());
   } else {
     mCurrSection = std::distance(mSections.begin(), it);
+    // If there's a corresponding relocation section, update mCurrRelIdx also
+    std::ostringstream builder{};
+    builder << "rel" << name;
+    auto relName = builder.str();
+    auto relIt = std::find_if(mSections.begin(), mSections.end(),
+        [&](auto& sec) { return sec->name() == relName; });
+    mCurrRelIdx = std::distance(mSections.begin(), relIt);
     return *mSections.at(mCurrSection);
   }
 }
@@ -306,12 +313,12 @@ Elf32_Sym& ELF::addSymbol(const std::string name, uint32_t value, uint32_t size,
     // Search the section header table for a header of a relocation section
     // that points back to mCurrSymTab.
 
-    // r_offset is the offset into the symbol table of the symbol we just added.
+    // r_offset is an offset into the section where the symbol lives.
     // r_info is both the symbol's index in the symbol table and the type of
     // relocation that should occur.
-    currentRelocationSection().relocations().emplace_back(
-        Elf32_Rel{.r_offset = static_cast<Elf32_Addr>(idx * sizeof(Elf32_Sym)),
-        .r_info = ELF32_R_SYM(idx) | ELF32_R_TYPE(R_386_32)});
+    currentRelocationSection().relocations().emplace_back(Elf32_Rel{
+        .r_offset = value,
+        .r_info = ELF32_R_INFO(idx, R_386_32)});
   }
 
   return currentSymbolTable().symbols().back();
