@@ -11,7 +11,12 @@ using namespace GBAS;
 
 BOOST_AUTO_TEST_SUITE(elf);
 
-BOOST_AUTO_TEST_CASE(elf_test_constructor) {
+/**
+ * Make sure the header member of the elf file is filled out as far as it can
+ * be.
+ */
+BOOST_AUTO_TEST_CASE(elf_test_constructor_header) {
+
   ELFWrapper elf{};
 
   // Test the file header
@@ -48,6 +53,14 @@ BOOST_AUTO_TEST_CASE(elf_test_constructor) {
   // their headers, and ELF.mSections can be traversed to figure out the number
   // of section headers.
   BOOST_CHECK_EQUAL(elfHeader.e_shnum, 0);
+}
+
+/**
+ * Check that all the "default" sections have been created and that their
+ * headers are sane.
+ */
+BOOST_AUTO_TEST_CASE(elf_test_constructor_sections) {
+  ELFWrapper elf{};
 
   // shstrtab, strtab, data, reldata, rodata, relrodata, bss, relbss, text,
   // reltext, init, relinit, symtab
@@ -200,7 +213,12 @@ BOOST_AUTO_TEST_CASE(elf_test_constructor) {
 
 }
 
+/**
+ * Make sure addSection behavior is correct.
+ */
 BOOST_AUTO_TEST_CASE(elf_test_addSection) {
+  // TODO invalid section name should fail
+
   // adding duplicate name should fail
   {
     ELFWrapper elf{};
@@ -217,7 +235,7 @@ BOOST_AUTO_TEST_CASE(elf_test_addSection) {
             .sh_entsize = sizeof(Elf32_Sym)}), false), ELFException);
   }
 
-  // without relocation section
+  // without relocation section should mean only one section got added
   {
     ELFWrapper elf{};
     size_t prevCount = elf.getSections().size();
@@ -236,7 +254,8 @@ BOOST_AUTO_TEST_CASE(elf_test_addSection) {
     BOOST_CHECK(elf.getSection("new_section").header().sh_type == SHT_PROGBITS);
   }
 
-  // with relocation section
+  // with relocation section should mean two sections got added, one of type
+  // SHT_REL
   {
     ELFWrapper elf{};
     size_t prevCount = elf.getSections().size();
@@ -257,6 +276,9 @@ BOOST_AUTO_TEST_CASE(elf_test_addSection) {
   }
 }
 
+/**
+ * Make sure we can add a string to the string table and pull it back out.
+ */
 BOOST_AUTO_TEST_CASE(elf_test_addString) {
   ELFWrapper elf{};
 
@@ -267,11 +289,11 @@ BOOST_AUTO_TEST_CASE(elf_test_addString) {
                     11);
 }
 
+/**
+ * Make sure we can define a symbol in a section that that it gets added
+ * correctly to the symbol table.
+ */
 BOOST_AUTO_TEST_CASE(elf_test_addSymbol) {
-  ELFWrapper elf{};
-
-  elf.setSection("data");
-
   // TODO invalid names should fail
   // TODO invalid sizes should fail
   // TODO invalid types should fail
@@ -279,12 +301,25 @@ BOOST_AUTO_TEST_CASE(elf_test_addSymbol) {
 
   // Attempting to redefine a symbol should throw an exception
   {
-    auto& ret = elf.addSymbol("asdf", 1234, 0,
+    ELFWrapper elf{};
+    elf.setSection("data");
+
+    elf.addSymbol("asdf", 1234, 0,
         ISection::Type{}.object(), ISection::Binding{}.local(),
         ISection::Visibility{}, false);
     BOOST_CHECK_THROW(elf.addSymbol("asdf", 0, 0, ISection::Type{}.object(),
           ISection::Binding{}.local(), ISection::Visibility{}, false),
         ELFException);
+  }
+
+  // Should be able to define a symbol once and pull it back out
+  {
+    ELFWrapper elf{};
+    elf.setSection("data");
+
+    auto& ret = elf.addSymbol("asdf", 1234, 0,
+        ISection::Type{}.object(), ISection::Binding{}.local(),
+        ISection::Visibility{}, false);
 
     // Make sure the return value is sane
     BOOST_CHECK_EQUAL(ret.st_name, 0);
@@ -307,6 +342,9 @@ BOOST_AUTO_TEST_CASE(elf_test_addSymbol) {
   }
 }
 
+/**
+ * Add some data to a section and make sure it can be read back out.
+ */
 BOOST_AUTO_TEST_CASE(elf_test_addData) {
   ELFWrapper elf{};
 
@@ -324,70 +362,6 @@ BOOST_AUTO_TEST_CASE(elf_test_addData) {
       BOOST_CHECK_EQUAL(data[i], rData.data()[i]);
     }
   }
-
-  {
-    auto& rRoData = dynamic_cast<ProgramSection&>(elf.getSection("rodata"));
-    rRoData.append(data);
-
-    BOOST_CHECK_EQUAL(rRoData.data().size(), data.size());
-    BOOST_CHECK_EQUAL(rRoData.header().sh_size,
-                      256);
-    for (size_t i = 0; i < data.size(); i++) {
-      BOOST_CHECK_EQUAL(data[i], rRoData.data()[i]);
-    }
-  }
-
-  {
-    auto& rBss = dynamic_cast<ProgramSection&>(elf.getSection("bss"));
-    rBss.append(data);
-
-    BOOST_CHECK_EQUAL(rBss.data().size(), data.size());
-    BOOST_CHECK_EQUAL(rBss.header().sh_size, 256);
-    for (size_t i = 0; i < data.size(); i++) {
-      BOOST_CHECK_EQUAL(data[i], rBss.data()[i]);
-    }
-  }
-
-  {
-    auto& rText = dynamic_cast<ProgramSection&>(elf.getSection("text"));
-    rText.append(data);
-
-    BOOST_CHECK_EQUAL(rText.data().size(), data.size());
-    BOOST_CHECK_EQUAL(rText.header().sh_size, 256);
-    for (size_t i = 0; i < data.size(); i++) {
-      BOOST_CHECK_EQUAL(data[i], rText.data()[i]);
-    }
-  }
-
-  {
-    auto& rInit = dynamic_cast<ProgramSection&>(elf.getSection("init"));
-    rInit.append(data);
-
-    BOOST_CHECK_EQUAL(rInit.data().size(), data.size());
-    BOOST_CHECK_EQUAL(rInit.header().sh_size, 256);
-    for (size_t i = 0; i < data.size(); i++) {
-      BOOST_CHECK_EQUAL(data[i], rInit.data()[i]);
-    }
-  }
-}
-
-BOOST_AUTO_TEST_CASE(elf_test_define_symbol) {
-  // - set the section
-  // - define a symbol
-  // - make sure we can look up the correct value
-  
-  ELFWrapper elf{};
-
-  auto& sec = elf.setSection("data");
-
-  uint32_t dataSym = 0x12345678;
-  elf.addProgbits(reinterpret_cast<uint8_t*>(&dataSym), sizeof(dataSym));
-
-  auto& dataSec = dynamic_cast<ProgramSection&>(sec);
-  BOOST_CHECK_EQUAL(dataSec.data().size(), sizeof(dataSym));
-
-  //elf.addSymbol("some_symbol", 
-  //    );
 }
 
 BOOST_AUTO_TEST_SUITE_END();
