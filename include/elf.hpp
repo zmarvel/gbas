@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <vector>
 #include <ostream>
+#include <numeric>
 
 #include <elf.h>
 
@@ -50,6 +51,8 @@ class ISection {
     std::string& name() { return mName; }
 
     Elf32_Shdr& header() { return mHeader; }
+
+    virtual size_t size() const = 0;
 
     class Type {
       public:
@@ -132,6 +135,13 @@ class ProgramSection : public Section<SectionType::PROGBITS> {
       , mData{}
     { }
 
+    virtual size_t size() const override { return data().size(); }
+
+    const std::vector<uint8_t>& data() const {
+      return mData;
+    }
+
+
     std::vector<uint8_t>& data() {
       return mData;
     }
@@ -156,6 +166,22 @@ class StrTabSection : public Section<SectionType::STRTAB> {
       , mStrings{}
     { }
 
+    virtual size_t size() const override {
+      // TODO maybe we should add 1 to the length of every string to account for
+      // the terminating byte
+      return std::accumulate(strings().begin(),
+                             strings().end(),
+                             0,
+                             [](size_t total_len, std::string st) -> size_t {
+                               return total_len + st.size();
+                             });
+    }
+
+    const StringTable& strings() const {
+      return mStrings;
+    }
+
+
     StringTable& strings() {
       return mStrings;
     }
@@ -174,6 +200,7 @@ class SymTabSection : public Section<SectionType::SYMTAB> {
       : Section<SectionType::SYMTAB>()
       , mSymbols{}
     {
+      // First entry is always full of zeros.
       mSymbols.emplace_back(
           Elf32_Sym{.st_name = 0,
           .st_value = 0,
@@ -194,6 +221,16 @@ class SymTabSection : public Section<SectionType::SYMTAB> {
           .st_info = 0,
           .st_other = 0,
           .st_shndx = 0});
+    }
+
+    virtual size_t size() const override {
+      // TODO maybe we should add 1 to the length of every string to account for
+      // the terminating byte
+      return sizeof(Symbol) * symbols().size();
+    }
+
+    const SymbolTable& symbols() const {
+      return mSymbols;
     }
 
     SymbolTable& symbols() {
@@ -220,6 +257,10 @@ class RelSection : public Section<SectionType::REL> {
       , mRelocations{}
     { }
 
+    virtual size_t size() const override {
+      return sizeof(Relocation) * mRelocations.size();
+    }
+
     const std::string& other() { return mOther; }
 
     RelocationTable& relocations() {
@@ -237,11 +278,10 @@ using SectionList = std::vector<std::unique_ptr<ISection>>;
  * Models an ELF file, for the purposes of Game Boy programs. This means there
  * is currently no support for e.g. dynamic linking or executable files.
  */
-class ELF {
- public:
+class ELF
+{
+public:
   ELF();
-
-  void write(std::ostream& out);
 
   /**
    * Add a symbol to the current section.
@@ -261,9 +301,13 @@ class ELF {
    * @returns a reference to the symbol in its symbol table.
    * @throws ELFException if a symbol with that name already exists.
    */
-  Elf32_Sym& addSymbol(const std::string name, uint32_t value, uint32_t size,
-      ISection::Type type, ISection::Binding bind,
-      ISection::Visibility visibility, bool relocatable);
+  Elf32_Sym& addSymbol(const std::string name,
+                       uint32_t value,
+                       uint32_t size,
+                       ISection::Type type,
+                       ISection::Binding bind,
+                       ISection::Visibility visibility,
+                       bool relocatable);
 
   /**
    * Add str to the string table.
@@ -299,8 +343,11 @@ class ELF {
    */
   void computeSectionOffsets();
 
- protected:
+  Elf32_Ehdr& header() { return mHeader; }
 
+  const SectionList& sections() { return mSections; }
+
+protected:
   /**
    * Add a section. Only in-place construction supported.
    *
@@ -343,14 +390,22 @@ class ELF {
    */
   uint32_t mShStrTabIdx;
 
-  StrTabSection& shStringTable() { return dynamic_cast<StrTabSection&>(*mSections.at(mShStrTabIdx)); }
+public:
+  StrTabSection& shStringTable()
+  {
+    return dynamic_cast<StrTabSection&>(*mSections.at(mShStrTabIdx));
+  }
 
+protected:
   /**
    * Index of the current string table in mSections.
    */
   uint32_t mStrTabIdx;
 
-  StrTabSection& stringTable() { return dynamic_cast<StrTabSection&>(*mSections.at(mStrTabIdx)); }
+  StrTabSection& stringTable()
+  {
+    return dynamic_cast<StrTabSection&>(*mSections.at(mStrTabIdx));
+  }
 
   /**
    * Index of the current section in mSections.
@@ -365,14 +420,20 @@ class ELF {
    */
   uint32_t mCurrRelIdx;
 
-  RelSection& currentRelocationSection() { return dynamic_cast<RelSection&>(*mSections.at(mCurrRelIdx)); }
+  RelSection& currentRelocationSection()
+  {
+    return dynamic_cast<RelSection&>(*mSections.at(mCurrRelIdx));
+  }
 
   /**
    * Index of current symbol table in mSections.
    */
   uint32_t mCurrSymTabIdx;
 
-  SymTabSection& currentSymbolTable() { return dynamic_cast<SymTabSection&>(*mSections.at(mCurrSymTabIdx)); }
+  SymTabSection& currentSymbolTable()
+  {
+    return dynamic_cast<SymTabSection&>(*mSections.at(mCurrSymTabIdx));
+  }
 
   /**
    * While this could eat up a lot of memory for a huge program, it's a lot

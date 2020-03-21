@@ -3,21 +3,24 @@
 #include <fstream>
 
 #include "tokenizer.hpp"
+#include "elf_reader.hpp"
 
 class InputFile {
  public:
-  InputFile(std::string filename) : filename{filename}, stream{filename} {}
+  InputFile(std::string filename) : filename_{filename}, stream_{filename} {}
 
-  ~InputFile() { stream.close(); }
+  ~InputFile() { stream_.close(); }
 
-  bool exists() { return stream.is_open(); }
+  bool exists() { return stream_.is_open(); }
 
-  std::ifstream& getStream() { return stream; }
+  std::ifstream& stream() { return stream_; }
 
  private:
-  std::string filename;
-  std::ifstream stream;
+  std::string filename_;
+  std::ifstream stream_;
 };
+
+using namespace GBAS;
 
 static const std::string USAGE = " <input file>";
 int main(int argc, char* argv[]) {
@@ -32,14 +35,10 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  auto tokenizer = Tokenizer{};
-  // Have to explicitly type because tokens is inferred wrong
-  // TODO investigate
-  TokenList tokens = tokenizer.tokenize(infile.getStream());
-  std::cout << tokens.size() << std::endl;
-  for (auto it = tokens.begin(); it != tokens.end(); it++) {
-    std::cout << *it << std::endl;
-  }
+  ELFReader::read(infile.stream()).or_else([](std::string msg) {
+    std::cerr << msg << std::endl;
+  });
+
 
   return 0;
 }

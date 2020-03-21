@@ -1,6 +1,6 @@
 
-CXXFLAGS += -ggdb -Wextra -Wall
-LDFLAGS += -ggdb -Wextra -Wall
+CXXFLAGS += -ggdb -Wextra -Wall -m32
+LDFLAGS += -ggdb -Wextra -Wall -m32
 
 EXE_SRC = src/main.cpp
 EXE = gbas
@@ -9,13 +9,15 @@ SRCS = src/tokenizer.cpp \
        src/parser.cpp \
        src/assembler.cpp \
        src/elf.cpp \
+       src/elf_writer.cpp \
+       src/elf_reader.cpp \
 
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
 COVS = $(SRCS:.cpp=.gcda) \
     $(SRCS:.cpp=.gcno)
 EXE_OBJS = $(OBJS) $(EXE_SRC:.cpp=.o)
-INC = -Iinclude
+INC = -Iinclude -Ilib/expected/include
 
 TEST_SRCS = test/char_utils_test.cpp \
 	    test/tokenizer_test.cpp \
@@ -48,7 +50,7 @@ check: $(TEST_EXE)
 ifdef CHECK_LOG
 	-./$(TEST_EXE) $(CHECK_OPTIONS) > $(CHECK_LOG)
 else
-	-./$(TEST_EXE) $(CHECK_OPTIONS) 
+	-./$(TEST_EXE) $(CHECK_OPTIONS)
 endif
 
 %.o: %.cpp Makefile
