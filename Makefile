@@ -1,6 +1,6 @@
 
-CXXFLAGS += -ggdb -Wextra -Wall -m32
-LDFLAGS += -ggdb -Wextra -Wall -m32
+CXXFLAGS += -ggdb -Wextra -Wall -std=c++17
+LDFLAGS += -ggdb -Wextra -Wall -std=c++17
 
 EXE_SRC = src/main.cpp
 EXE = gbas
@@ -12,11 +12,10 @@ SRCS = src/tokenizer.cpp \
        src/elf_writer.cpp \
        src/elf_reader.cpp \
 
-OBJS = $(SRCS:.cpp=.o)
-DEPS = $(SRCS:.cpp=.d)
-COVS = $(SRCS:.cpp=.gcda) \
-    $(SRCS:.cpp=.gcno)
-EXE_OBJS = $(OBJS) $(EXE_SRC:.cpp=.o)
+OBJS = $(patsubst %.cpp,build/%.o,$(notdir $(SRCS)))
+DEPS = $(OBJS:.o=.d)
+COVS = $(OBJS:.o=.gcda) $(OBJS:.o=.gcno)
+EXE_OBJS = $(OBJS) $(patsubst %.cpp,build/%.o,$(notdir $(EXE_SRC)))
 INC = -Iinclude -Ilib/expected/include
 
 TEST_SRCS = test/char_utils_test.cpp \
@@ -25,12 +24,12 @@ TEST_SRCS = test/char_utils_test.cpp \
 	    test/assembler_test.cpp \
 	    test/elf_test.cpp \
 
-TEST_OBJS = $(TEST_SRCS:.cpp=.o)
+TEST_OBJS = $(patsubst %.cpp,build/%.o,$(notdir $(TEST_SRCS)))
 
-TEST_DEPS = $(TEST_SRCS:.cpp=.d)
+TEST_DEPS = $(TEST_OBJS:.o=.d)
 
-TEST_COVS = $(TEST_SRCS:.cpp=.gcno) \
-    $(TEST_SRCS:.cpp=.gcda)
+TEST_COVS = $(TEST_OBJS:.o=.gcno) \
+    $(TEST_OBJS:.o=.gcda)
 
 
 $(EXE): $(EXE_OBJS)
@@ -53,7 +52,12 @@ else
 	-./$(TEST_EXE) $(CHECK_OPTIONS)
 endif
 
-%.o: %.cpp Makefile
+build/%.o: src/%.cpp Makefile
+	mkdir -p build
+	$(CXX) -MD -c $(CXXFLAGS) $(INC) -o $@ $<
+
+build/%.o: test/%.cpp Makefile
+	mkdir -p build
 	$(CXX) -MD -c $(CXXFLAGS) $(INC) -o $@ $<
 
 .PHONY: clean
