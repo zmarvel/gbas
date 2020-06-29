@@ -20,7 +20,7 @@ static const std::array<const Token, 6> doubleRegisters = {
 };
 
 static DirectivePropsList directives{{
-  {".section", DirectiveType::SECTION, 1},
+    {".section", DirectiveType::SECTION, 1},
 }};
 
 static InstructionPropsList instructions{{
@@ -88,12 +88,16 @@ Token Parser::peek() {
 
 Token Parser::peekNext() { return mTokens.at(mPos + 1); }
 
-std::shared_ptr<BaseNode> Parser::parse() { return program(); };
+std::shared_ptr<Root> Parser::parse() { return program(); };
 
-std::shared_ptr<BaseNode> Parser::program() {
+std::shared_ptr<Root> Parser::program() {
   std::vector<std::shared_ptr<BaseNode>> lines;
   while (!isEof(peek())) {
-    lines.push_back(line());
+    if (isNewline(peek())) {
+      next();
+    } else {
+      lines.push_back(line());
+    }
   }
   return std::make_shared<Root>(lines);
 }
@@ -111,18 +115,15 @@ std::shared_ptr<BaseNode> Parser::line() {
   }
 }
 
-std::shared_ptr<BaseNode> Parser::label() {
-  return parseLabel(next());
-}
+std::shared_ptr<BaseNode> Parser::label() { return parseLabel(next()); }
 
 std::shared_ptr<BaseNode> Parser::parseLabel(const Token& tok) {
   return std::make_shared<Label>(tok);
 }
 
-
 const DirectiveProps& Parser::findDirective(const Token& tok) {
   auto props = std::find_if(directives.begin(), directives.end(),
-      [&](auto props) { return props.lexeme == tok; });
+                            [&](auto props) { return props.lexeme == tok; });
   if (props == directives.end()) {
     throw ParserException{"Invalid directive in program"};
   } else {
@@ -148,7 +149,11 @@ std::shared_ptr<BaseNode> Parser::instruction() {
   auto inst = next();
   std::vector<std::shared_ptr<BaseNode>> operands;
   while (!isNewline(peek()) && operands.size() < 3) {
-    operands.push_back(operand());
+    if (isComma(peek())) {
+      next();
+    } else {
+      operands.push_back(operand());
+    }
   }
   auto props = findInstruction(inst);
   if (props == instructions.end()) {
@@ -293,15 +298,15 @@ std::shared_ptr<BaseNode> Parser::primary() {
   }
 }
 
-std::shared_ptr<BaseNode> Parser::number() {
-  return parseNumber(next());
-}
+std::shared_ptr<BaseNode> Parser::number() { return parseNumber(next()); }
 
 std::shared_ptr<BaseNode> Parser::parseNumber(const Token& tok) {
   return std::make_shared<Number>(static_cast<Number>(std::atoi(tok.c_str())));
 }
 
 bool Parser::isNewline(const Token& tok) { return tok == "EOL"; }
+
+bool Parser::isComma(const Token& tok) { return tok == ","; }
 
 int Parser::expectNewline(const TokenList& list, int start, int max) {
   for (int i = start; i < max; i++) {
@@ -375,7 +380,7 @@ bool Parser::isDirective(const Token& tok) {
   }
 
   return std::all_of(tok.begin() + 1, tok.end(),
-      [](auto c) { return isAlphaNumeric(c); });
+                     [](auto c) { return isAlphaNumeric(c); });
 }
 
 bool Parser::isRegister(const Token& tok) {

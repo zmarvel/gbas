@@ -22,7 +22,7 @@ void Assembler::assemble(std::shared_ptr<AST::Root> ast, ELF& elf) {
           switch (directive->type()) {
             case DirectiveType::SECTION:
               {
-                elf.setSection(directive->operands().at(0));
+                elf.set_section(directive->operands().at(0));
               }
               break;
             default:
@@ -72,8 +72,8 @@ void Assembler::assemble(std::shared_ptr<AST::Root> ast, ELF& elf) {
           //    throw AssemblerException("Invalid section type");
           //}
           // TODO relocatable
-          //elf.addSymbol(label->name(), value, 0, info, STV_DEFAULT, other, true);
-          elf.addSymbol(label->name(), value, 0, ISection::Type{},
+          //elf.add_symbol(label->name(), value, 0, info, STV_DEFAULT, other, true);
+          elf.add_symbol(label->name(), value, 0, ISection::Type{},
               ISection::Binding{}.global(), ISection::Visibility{}, false);
         }
         break;
@@ -474,7 +474,7 @@ void Assembler::assembleInstruction(ELF& elf, BaseInstruction& instr) {
               return (fmt.first == OperandType::INVALID) &&
                      (fmt.second == OperandType::INVALID);
             })) {
-          elf.addProgbits(std::vector<uint8_t>{InstructionNone{instr0.type()}.encode()});
+          elf.add_progbits(std::vector<uint8_t>{InstructionNone{instr0.type()}.encode()});
         } else {
           throw AssemblerException("Invalid instruction0 usage");
         }
@@ -500,7 +500,7 @@ void Assembler::assembleInstruction(ELF& elf, BaseInstruction& instr) {
             switch (instr1.type()) {
               case InstructionType::INC:
               case InstructionType::DEC:
-                elf.addProgbits(instructionR(instr1, *reg));
+                elf.add_progbits(instructionR(instr1, *reg));
                 return;
                 break;
               case InstructionType::SUB:
@@ -509,7 +509,7 @@ void Assembler::assembleInstruction(ELF& elf, BaseInstruction& instr) {
               case InstructionType::XOR:
               case InstructionType::OR:
               case InstructionType::CP:
-                elf.addProgbits(instructionRA(instr1, *reg));
+                elf.add_progbits(instructionRA(instr1, *reg));
                 return;
                 break;
               default:
@@ -524,7 +524,7 @@ void Assembler::assembleInstruction(ELF& elf, BaseInstruction& instr) {
               case InstructionType::DEC:
               case InstructionType::POP:
               case InstructionType::PUSH:
-                elf.addProgbits(instructionD(instr1, *reg));
+                elf.add_progbits(instructionD(instr1, *reg));
                 return;
                 break;
               default:
@@ -541,7 +541,7 @@ void Assembler::assembleInstruction(ELF& elf, BaseInstruction& instr) {
                 std::vector<uint8_t> encoded{
                     InstructionA{instr1.type(), reg->reg1(), reg->reg2()}
                         .encode()};
-                elf.addProgbits(encoded);
+                elf.add_progbits(encoded);
               }
                 return;
                 break;

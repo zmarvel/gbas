@@ -472,7 +472,7 @@ class Parser {
    * @param tokens: Input list of tokens.
    * @param i: Current position in the list (allowing recursive calls).
    */
-  std::shared_ptr<AST::BaseNode> parse();
+  std::shared_ptr<AST::Root> parse();
 
   /**
    * Return the next Token in the list and increment the position counter.
@@ -492,7 +492,7 @@ class Parser {
    */
   Token peekNext();
 
-  std::shared_ptr<AST::BaseNode> program();
+  std::shared_ptr<AST::Root> program();
 
   std::shared_ptr<AST::BaseNode> line();
   std::shared_ptr<AST::BaseNode> instruction();
@@ -626,6 +626,11 @@ class Parser {
    * True only if tok is EOL.
    */
   static bool isNewline(const Token& tok);
+
+  /**
+   * True only if tok is a comma.
+   */
+  static bool isComma(const Token& tok);
 
   /**
    * True only if tok is EOF.

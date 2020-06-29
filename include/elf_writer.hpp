@@ -9,17 +9,18 @@
 namespace GBAS {
 
 class ELFWriter {
-  public:
-    ELFWriter(ELF& elf) : elf_{elf} { }
-    ELFWriter() = delete;
+ public:
+  ELFWriter(ELF& elf) : elf_{elf} {}
+  ELFWriter() = delete;
 
-    void write(std::ostream& os);
-    size_t populate_section_headers(size_t starting_offs);
+  void write(std::string path);
+  void write(std::ostream& os);
+  size_t populate_section_headers(size_t starting_offs);
 
-  private:
-    ELF& elf_;
+ private:
+  ELF& elf_;
 };
 
-}
+}  // namespace GBAS
 
-#endif // ELF_WRITER_HPP
+#endif  // ELF_WRITER_HPP

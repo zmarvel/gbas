@@ -42,17 +42,19 @@ class StrTabSection;
 
 class ISection {
   public:
-    ISection() : mName{}, mHeader{} { }
+    ISection() : mName{}, header_{} { }
 
-    ISection(std::string name, Elf32_Shdr hdr) : mName{name}, mHeader{hdr} { }
+    ISection(std::string name, Elf32_Shdr hdr) : mName{name}, header_{hdr} { }
 
     virtual SectionType type() { return SectionType::INVALID; }
 
     std::string& name() { return mName; }
 
-    Elf32_Shdr& header() { return mHeader; }
+    Elf32_Shdr& header() { return header_; }
 
     virtual size_t size() const = 0;
+
+    virtual void write(std::ostream& os) const = 0;
 
     class Type {
       public:
@@ -113,7 +115,7 @@ class ISection {
 
   private:
     std::string mName;
-    Elf32_Shdr mHeader;
+    Elf32_Shdr header_;
 };
 
 template <SectionType stype>
@@ -144,6 +146,10 @@ class ProgramSection : public Section<SectionType::PROGBITS> {
 
     std::vector<uint8_t>& data() {
       return mData;
+    }
+
+    virtual void write(std::ostream& os) const override {
+      os.write(reinterpret_cast<const char*>(mData.data()), mData.size());
     }
 
     void append(std::vector<uint8_t>& buf) {
@@ -186,59 +192,61 @@ class StrTabSection : public Section<SectionType::STRTAB> {
       return mStrings;
     }
 
+    virtual void write(std::ostream& os) const override {
+      for (auto it = strings().begin(); it != strings().end(); it++) {
+        os.write(it->c_str(), it->size());
+        os.write("\0", 1);
+      }
+    }
+
   private:
     StringTable mStrings;
 };
 
-
 class SymTabSection : public Section<SectionType::SYMTAB> {
-  public:
-    using Symbol = Elf32_Sym;
-    using SymbolTable = std::vector<Symbol>;
+ public:
+  using Symbol = Elf32_Sym;
+  using SymbolTable = std::vector<Symbol>;
 
-    SymTabSection()
-      : Section<SectionType::SYMTAB>()
-      , mSymbols{}
-    {
-      // First entry is always full of zeros.
-      mSymbols.emplace_back(
-          Elf32_Sym{.st_name = 0,
-          .st_value = 0,
-          .st_size = 0,
-          .st_info = 0,
-          .st_other = 0,
-          .st_shndx = 0});
+  SymTabSection() : Section<SectionType::SYMTAB>(), mSymbols{} {
+    // First entry is always full of zeros.
+    mSymbols.emplace_back(Elf32_Sym{.st_name = 0,
+                                    .st_value = 0,
+                                    .st_size = 0,
+                                    .st_info = 0,
+                                    .st_other = 0,
+                                    .st_shndx = 0});
+  }
+
+  SymTabSection(std::string name, Elf32_Shdr hdr)
+      : Section<SectionType::SYMTAB>(name, hdr), mSymbols{} {
+    mSymbols.emplace_back(Elf32_Sym{.st_name = 0,
+                                    .st_value = 0,
+                                    .st_size = 0,
+                                    .st_info = 0,
+                                    .st_other = 0,
+                                    .st_shndx = 0});
+  }
+
+  virtual size_t size() const override {
+    // TODO maybe we should add 1 to the length of every string to account for
+    // the terminating byte
+    return sizeof(Symbol) * symbols().size();
+  }
+
+  const SymbolTable& symbols() const { return mSymbols; }
+
+  SymbolTable& symbols() { return mSymbols; }
+
+  virtual void write(std::ostream& os) const override {
+    for (auto it = symbols().begin(); it != symbols().end(); it++) {
+      auto hdr = *it;
+      os.write(reinterpret_cast<char*>(&hdr), sizeof(hdr));
     }
+  }
 
-    SymTabSection(std::string name, Elf32_Shdr hdr)
-      : Section<SectionType::SYMTAB>(name, hdr)
-      , mSymbols{}
-    {
-      mSymbols.emplace_back(
-          Elf32_Sym{.st_name = 0,
-          .st_value = 0,
-          .st_size = 0,
-          .st_info = 0,
-          .st_other = 0,
-          .st_shndx = 0});
-    }
-
-    virtual size_t size() const override {
-      // TODO maybe we should add 1 to the length of every string to account for
-      // the terminating byte
-      return sizeof(Symbol) * symbols().size();
-    }
-
-    const SymbolTable& symbols() const {
-      return mSymbols;
-    }
-
-    SymbolTable& symbols() {
-      return mSymbols;
-    }
-
-  private:
-    SymbolTable mSymbols;
+ private:
+  SymbolTable mSymbols;
 };
 
 class RelSection : public Section<SectionType::REL> {
@@ -267,12 +275,38 @@ class RelSection : public Section<SectionType::REL> {
       return mRelocations;
     }
 
+    const RelocationTable& relocations() const {
+      return mRelocations;
+    }
+
+    virtual void write(std::ostream& os) const override {
+      // TODO is the first entry supposed to be null?
+      for (auto it = relocations().begin(); it != relocations().end(); it++) {
+        os.write(reinterpret_cast<const char*>(&(*it)), sizeof(*it));
+      }
+    }
+
   private:
     std::string mOther;
     RelocationTable mRelocations;
 };
 
 using SectionList = std::vector<std::unique_ptr<ISection>>;
+
+
+
+template <typename headerT>
+headerT swap_elf_header(headerT& hdr);
+
+template <>
+Elf32_Ehdr GBAS::swap_elf_header(Elf32_Ehdr& hdr);
+
+template <typename sheaderT>
+sheaderT swap_section_header(sheaderT& hdr);
+
+template <>
+Elf32_Shdr GBAS::swap_section_header(Elf32_Shdr& hdr);
+
 
 /**
  * Models an ELF file, for the purposes of Game Boy programs. This means there
@@ -301,25 +335,21 @@ public:
    * @returns a reference to the symbol in its symbol table.
    * @throws ELFException if a symbol with that name already exists.
    */
-  Elf32_Sym& addSymbol(const std::string name,
-                       uint32_t value,
-                       uint32_t size,
-                       ISection::Type type,
-                       ISection::Binding bind,
-                       ISection::Visibility visibility,
-                       bool relocatable);
+  Elf32_Sym& add_symbol(const std::string name, uint32_t value, uint32_t size,
+                        ISection::Type type, ISection::Binding bind,
+                        ISection::Visibility visibility, bool relocatable);
 
   /**
    * Add str to the string table.
    *
    * @returns a reference to the inserted string.
    */
-  std::string& addString(const std::string& str);
+  std::string& add_string(const std::string& str);
 
   /**
    * Add some data to a PROGBITS section.
    */
-  void addProgbits(std::vector<uint8_t> data);
+  void add_progbits(std::vector<uint8_t> data);
 
   /**
    * Add some data to a PROGBITS section.
@@ -327,25 +357,25 @@ public:
    * @param pData: Pointer to bytes that will be copied.
    * @param n: How many bytes will be copied.
    */
-  void addProgbits(uint8_t* pData, size_t n);
+  void add_progbits(uint8_t* pData, size_t n);
 
   /**
    * Change the current section.
    *
    * @param name: Name of an already-created section.
    */
-  ISection& setSection(const std::string& name);
+  ISection& set_section(const std::string& name);
 
   /**
    * Go through each section header and compute each section's offset. If any
    * section is modified after this function has been called, the function
    * should be called again.
    */
-  void computeSectionOffsets();
+  void comput_section_offsets();
 
-  Elf32_Ehdr& header() { return mHeader; }
+  Elf32_Ehdr& header() { return header_; }
 
-  const SectionList& sections() { return mSections; }
+  const SectionList& sections() { return sections_; }
 
 protected:
   /**
@@ -354,7 +384,7 @@ protected:
    * @param section: rvalue reference to ISection unique_ptr.
    * @param relocatable: Should a corresponding RelocationSection be created?
    */
-  void addSection(std::unique_ptr<ISection>&& section, bool relocatable = true);
+  void add_section(std::unique_ptr<ISection>&& section, bool relocatable = true);
 
   /*
      typedef struct {
@@ -378,61 +408,61 @@ protected:
   /**
    * ELF file header.
    */
-  Elf32_Ehdr mHeader;
+  Elf32_Ehdr header_;
 
   /**
    * Vector of sections.
    */
-  SectionList mSections;
+  SectionList sections_;
 
   /**
-   * Index of the section name string table in mSections.
+   * Index of the section name string table in sections_.
    */
-  uint32_t mShStrTabIdx;
+  uint32_t shstrtab_idx_;
 
 public:
   StrTabSection& shStringTable()
   {
-    return dynamic_cast<StrTabSection&>(*mSections.at(mShStrTabIdx));
+    return dynamic_cast<StrTabSection&>(*sections_.at(shstrtab_idx_));
   }
 
 protected:
   /**
-   * Index of the current string table in mSections.
+   * Index of the current string table in sections_.
    */
-  uint32_t mStrTabIdx;
+  uint32_t strtab_idx_;
 
-  StrTabSection& stringTable()
+  StrTabSection& string_table()
   {
-    return dynamic_cast<StrTabSection&>(*mSections.at(mStrTabIdx));
+    return dynamic_cast<StrTabSection&>(*sections_.at(strtab_idx_));
   }
 
   /**
-   * Index of the current section in mSections.
+   * Index of the current section in sections_.
    */
-  uint32_t mCurrSection;
+  uint32_t curr_section_;
 
-  ISection& currentSection() { return *mSections.at(mCurrSection); }
+  ISection& current_section() { return *sections_.at(curr_section_); }
 
   /**
    * Index of the current relocation section (corresponding to the current
-   * progbits section) in mSections.
+   * progbits section) in sections_.
    */
-  uint32_t mCurrRelIdx;
+  uint32_t curr_rel_idx_;
 
-  RelSection& currentRelocationSection()
+  RelSection& current_relocation_section()
   {
-    return dynamic_cast<RelSection&>(*mSections.at(mCurrRelIdx));
+    return dynamic_cast<RelSection&>(*sections_.at(curr_rel_idx_));
   }
 
   /**
-   * Index of current symbol table in mSections.
+   * Index of current symbol table in sections_.
    */
-  uint32_t mCurrSymTabIdx;
+  uint32_t curr_symtab_idx_;
 
-  SymTabSection& currentSymbolTable()
+  SymTabSection& current_symbol_table()
   {
-    return dynamic_cast<SymTabSection&>(*mSections.at(mCurrSymTabIdx));
+    return dynamic_cast<SymTabSection&>(*sections_.at(curr_symtab_idx_));
   }
 
   /**
@@ -440,7 +470,7 @@ protected:
    * faster to check for duplicate symbol names. The alternative is linearly
    * searching through every symbol table when adding a new symbol.
    */
-  std::unordered_set<std::string> mSymbolNames;
+  std::unordered_set<std::string> symbol_names_;
 };
 
 class ELFException : std::exception {
