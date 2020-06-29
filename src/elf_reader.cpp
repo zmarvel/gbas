@@ -43,7 +43,7 @@ ELFReader::read(std::istream& is)
   // header table
   std::cout << "shoff: " << header.e_shoff << std::endl;
 
-  if (!is.seekg(shoff, std::ios_base::cur)) {
+  if (!is.seekg(shoff, std::ios_base::beg)) {
     return tl::make_unexpected("Unable to seek to section header table");
   }
 
@@ -52,6 +52,7 @@ ELFReader::read(std::istream& is)
   std::vector<Elf32_Shdr> shtab{};
   {
     size_t shsize = header.e_shentsize * header.e_shnum;
+    std::cout << "section header table size: " << shsize << std::endl;
     auto pshbuf = std::make_unique<char[]>(shsize);
     if (is.read(pshbuf.get(), shsize)) {
       for (size_t i = 0; i < header.e_shnum; i++) {
@@ -78,5 +79,37 @@ ELFReader::read(std::istream& is)
       << "entsize: " << it->sh_entsize << std::endl << std::endl;
   }
 
+  auto &strhdr = shtab[header.e_shstrndx];
 
+  if (!is.seekg(strhdr.sh_offset, std::ios_base::beg)) {
+    return tl::make_unexpected("Unable to seek to section name string table");
+  }
+
+  std::vector<std::string> section_names{};
+  {
+    {
+      char buf;
+      if (!is.read(&buf, sizeof(buf)) || buf != '\0') {
+        return tl::make_unexpected("Invalid section name string table");
+      }
+    }
+    std::string curr{};
+    for (size_t i = 0; i < strhdr.sh_size; i++) {
+      char buf;
+      if (!is.read(&buf, sizeof(buf))) {
+        return tl::make_unexpected(
+            "Failed to read char from section name string table");
+      }
+      curr.push_back(buf);
+      if (buf == '\0') {
+        std::cout << curr << std::endl;
+        section_names.push_back(curr);
+        curr.clear();
+      }
+    }
+  }
+
+  auto reader = std::make_unique<ELFReader>();
+  reader->elf_ = std::move(*pelf);
+  return std::move(reader);
 }
