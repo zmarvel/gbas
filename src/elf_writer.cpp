@@ -37,17 +37,17 @@ void ELFWriter::write(std::ostream& os) {
   // Let the section header table immediate follow the ELF header.
   auto& elf_hdr = elf_.header();
   elf_hdr.e_shoff = sizeof(elf_hdr);
-  printf("e_shoff=%u\n", elf_hdr.e_shoff);
   elf_hdr.e_shnum = elf_.sections().size();
   auto shstrpos = std::find_if(
       elf_.sections().begin(), elf_.sections().end(),
       [](auto& section) { return section->header().sh_type == SHT_STRTAB; });
-  elf_hdr.e_shstrndx = shstrpos - elf_.sections().begin();
+  elf_hdr.e_shstrndx = shstrpos - elf_.sections().begin() + 1;
   elf_hdr = swap_elf_header(elf_hdr);
 
   os.write(reinterpret_cast<char*>(&elf_hdr), sizeof(elf_hdr));
 
-  off_t section_offs = elf_.sections().size() * sizeof(Elf32_Shdr);
+  // off_t section_offs = elf_.sections().size() * sizeof(Elf32_Shdr);
+  off_t section_offs = sizeof(elf_hdr) + elf_.sections().size() * sizeof(Elf32_Shdr);
   // The first entry in the ELF section header table is NULL
   {
     Elf32_Shdr null_hdr;
@@ -56,49 +56,30 @@ void ELFWriter::write(std::ostream& os) {
     section_offs += sizeof(null_hdr);
   }
 
-  std::cout << "shstrtab size " << elf_.shStringTable().size() << std::endl;
-
-  std::string section_names{};
   // Now write out the rest of the section headers and build up the section name
   // string table
-  for (auto it = elf_.sections().begin(); it != elf_.sections().end(); it++) {
-    const auto& section = *it;
-    auto& hdr = section->header();
-    section_names.append(section->name() + '\0');
-    hdr.sh_name = it - elf_.sections().begin();
-    hdr.sh_size = section->size();
-    hdr.sh_offset = section_offs;
-    section_offs += section->size();
-    hdr = swap_section_header(hdr);
-    os.write(reinterpret_cast<char*>(&hdr), sizeof(hdr));
-  }
+  {
+    uint32_t section_header_ctr = 0;
+    uint32_t sh_name = 1;
+    for (auto it = elf_.sections().begin(); it != elf_.sections().end(); it++) {
+      const auto& section = *it;
+      auto& hdr = section->header();
+      hdr.sh_name = sh_name;
+      // Add 1 to include null byte
+      sh_name += section->name().size() + 1;
+      hdr.sh_size = section->size();
+      hdr.sh_offset = section_offs;
+      section_offs += section->size();
+      // printf("%s\t%08x\n", section->name().c_str(), hdr.sh_offset);
+      hdr = swap_section_header(hdr);
+      os.write(reinterpret_cast<char*>(&hdr), sizeof(hdr));
+      section_header_ctr++;
+    }
 
+  }
   // Iterate over the sections a second time and write them out
   for (auto it = elf_.sections().begin(); it != elf_.sections().end(); it++) {
     const auto& section = *it;
     section->write(os);
-  }
-}
-
-size_t ELFWriter::populate_section_headers(size_t starting_offs) {
-  size_t offs = starting_offs;
-  auto& shstrtab = elf_.shStringTable();
-  for (auto section_it = elf_.sections().begin();
-       section_it != elf_.sections().end(); section_it++) {
-    auto& section = *section_it;
-    auto hdr = section->header();
-
-    // populate index of section's name
-    const auto name_idx = shstrtab.strings().size();
-    shstrtab.strings().push_back(section->name());
-    hdr.sh_name = name_idx;
-
-    // TODO hdr.sh_addr
-
-    hdr.sh_offset = offs;
-
-    hdr.sh_size = section->size();
-
-    offs += hdr.sh_size;
   }
 }

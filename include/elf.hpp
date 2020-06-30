@@ -41,166 +41,147 @@ typedef struct {
 class StrTabSection;
 
 class ISection {
-  public:
-    ISection() : mName{}, header_{} { }
+ public:
+  ISection() : mName{}, header_{} {}
 
-    ISection(std::string name, Elf32_Shdr hdr) : mName{name}, header_{hdr} { }
+  ISection(std::string name, Elf32_Shdr hdr) : mName{name}, header_{hdr} {}
 
-    virtual SectionType type() { return SectionType::INVALID; }
+  virtual SectionType type() { return SectionType::INVALID; }
 
-    std::string& name() { return mName; }
+  std::string& name() { return mName; }
 
-    Elf32_Shdr& header() { return header_; }
+  Elf32_Shdr& header() { return header_; }
 
-    virtual size_t size() const = 0;
+  virtual size_t size() const = 0;
 
-    virtual void write(std::ostream& os) const = 0;
+  virtual void write(std::ostream& os) const = 0;
 
-    class Type {
-      public:
-        // no type by default
-        Type() : mType{STT_NOTYPE} { }
+  class Type {
+   public:
+    // no type by default
+    Type() : mType{STT_NOTYPE} {}
 
-        Type noType() { return Type{STT_NOTYPE}; }
-        Type object() { return Type{STT_OBJECT}; }
-        Type function() { return Type{STT_FUNC}; }
-        Type section() { return Type{STT_SECTION}; }
-        Type file() { return Type{STT_FILE}; }
+    Type noType() { return Type{STT_NOTYPE}; }
+    Type object() { return Type{STT_OBJECT}; }
+    Type function() { return Type{STT_FUNC}; }
+    Type section() { return Type{STT_SECTION}; }
+    Type file() { return Type{STT_FILE}; }
 
-        uint8_t type() {
-          return mType;
-        }
+    uint8_t type() { return mType; }
 
-      private:
-        Type(uint8_t type) : mType{type} { }
+   private:
+    Type(uint8_t type) : mType{type} {}
 
-        uint8_t mType;
-    };
+    uint8_t mType;
+  };
 
-    class Binding {
-      public:
-        // global by default
-        Binding() : mBinding{STB_GLOBAL} { }
+  class Binding {
+   public:
+    // global by default
+    Binding() : mBinding{STB_GLOBAL} {}
 
-        Binding local() { return Binding{STB_LOCAL}; }
-        Binding global() { return Binding{STB_GLOBAL}; }
-        Binding weak() { return Binding{STB_WEAK}; }
+    Binding local() { return Binding{STB_LOCAL}; }
+    Binding global() { return Binding{STB_GLOBAL}; }
+    Binding weak() { return Binding{STB_WEAK}; }
 
-        uint8_t binding() { return mBinding; }
+    uint8_t binding() { return mBinding; }
 
-      private:
-        Binding(uint8_t type) : mBinding{type} { }
+   private:
+    Binding(uint8_t type) : mBinding{type} {}
 
-        uint8_t mBinding;
-    };
+    uint8_t mBinding;
+  };
 
-    class Visibility {
-      public:
-        // default visibility
-        Visibility() : mVisibility{STV_DEFAULT} { }
+  class Visibility {
+   public:
+    // default visibility
+    Visibility() : mVisibility{STV_DEFAULT} {}
 
-        Visibility default_() { return Visibility{STV_DEFAULT}; }
-        Visibility internal() { return Visibility{STV_INTERNAL}; }
-        Visibility hidden() { return Visibility{STV_HIDDEN}; }
-        Visibility protected_() { return Visibility{STV_PROTECTED}; }
+    Visibility default_() { return Visibility{STV_DEFAULT}; }
+    Visibility internal() { return Visibility{STV_INTERNAL}; }
+    Visibility hidden() { return Visibility{STV_HIDDEN}; }
+    Visibility protected_() { return Visibility{STV_PROTECTED}; }
 
-        uint8_t visibility() { return mVisibility; }
+    uint8_t visibility() { return mVisibility; }
 
-      private:
-        Visibility(uint8_t type) : mVisibility{type} { }
+   private:
+    Visibility(uint8_t type) : mVisibility{type} {}
 
-        uint8_t mVisibility;
-    };
+    uint8_t mVisibility;
+  };
 
-
-  private:
-    std::string mName;
-    Elf32_Shdr header_;
+ private:
+  std::string mName;
+  Elf32_Shdr header_;
 };
 
 template <SectionType stype>
 class Section : public ISection {
-  public:
-    Section() : ISection{} { }
+ public:
+  Section() : ISection{} {}
 
-    Section(std::string name, Elf32_Shdr hdr) : ISection{name, hdr} { }
+  Section(std::string name, Elf32_Shdr hdr) : ISection{name, hdr} {}
 
-    virtual SectionType type() override { return stype; }
+  virtual SectionType type() override { return stype; }
 };
 
 class ProgramSection : public Section<SectionType::PROGBITS> {
-  public:
-    ProgramSection() : Section<SectionType::PROGBITS>(), mData{} { }
+ public:
+  ProgramSection() : Section<SectionType::PROGBITS>(), mData{} {}
 
-    ProgramSection(std::string name, Elf32_Shdr hdr)
-      : Section<SectionType::PROGBITS>(name, hdr)
-      , mData{}
-    { }
+  ProgramSection(std::string name, Elf32_Shdr hdr)
+      : Section<SectionType::PROGBITS>(name, hdr), mData{} {}
 
-    virtual size_t size() const override { return data().size(); }
+  virtual size_t size() const override { return data().size(); }
 
-    const std::vector<uint8_t>& data() const {
-      return mData;
-    }
+  const std::vector<uint8_t>& data() const { return mData; }
 
+  std::vector<uint8_t>& data() { return mData; }
 
-    std::vector<uint8_t>& data() {
-      return mData;
-    }
+  virtual void write(std::ostream& os) const override {
+    os.write(reinterpret_cast<const char*>(mData.data()), mData.size());
+  }
 
-    virtual void write(std::ostream& os) const override {
-      os.write(reinterpret_cast<const char*>(mData.data()), mData.size());
-    }
+  void append(std::vector<uint8_t>& buf) {
+    mData.insert(mData.end(), buf.begin(), buf.end());
+    header().sh_size += buf.size();
+  }
 
-    void append(std::vector<uint8_t>& buf) {
-      mData.insert(mData.end(), buf.begin(), buf.end());
-      header().sh_size += buf.size();
-    }
-
-  private:
-    std::vector<uint8_t> mData;
+ private:
+  std::vector<uint8_t> mData;
 };
 
 class StrTabSection : public Section<SectionType::STRTAB> {
-  public:
-    using StringTable = std::vector<std::string>;
+ public:
+  using StringTable = std::vector<std::string>;
 
-    StrTabSection() : Section<SectionType::STRTAB>(), mStrings{} { }
+  StrTabSection() : Section<SectionType::STRTAB>(), strings_{""} {}
 
-    StrTabSection(std::string name, Elf32_Shdr hdr)
-      : Section<SectionType::STRTAB>(name, hdr)
-      , mStrings{}
-    { }
+  StrTabSection(std::string name, Elf32_Shdr hdr)
+      : Section<SectionType::STRTAB>(name, hdr), strings_{""} {}
 
-    virtual size_t size() const override {
-      // TODO maybe we should add 1 to the length of every string to account for
-      // the terminating byte
-      return std::accumulate(strings().begin(),
-                             strings().end(),
-                             0,
-                             [](size_t total_len, std::string st) -> size_t {
-                               return total_len + st.size();
-                             });
+  virtual size_t size() const override {
+    // TODO maybe we should add 1 to the length of every string to account for
+    // the terminating byte
+    return std::accumulate(strings().begin(), strings().end(), 0,
+                           [](size_t total_len, std::string st) -> size_t {
+                             return total_len + st.size() + 1;
+                           });
+  }
+
+  const StringTable& strings() const { return strings_; }
+
+  StringTable& strings() { return strings_; }
+
+  virtual void write(std::ostream& os) const override {
+    for (auto it = strings().begin(); it != strings().end(); it++) {
+      os << *it;
+      os.write("\0", 1);
     }
+  }
 
-    const StringTable& strings() const {
-      return mStrings;
-    }
-
-
-    StringTable& strings() {
-      return mStrings;
-    }
-
-    virtual void write(std::ostream& os) const override {
-      for (auto it = strings().begin(); it != strings().end(); it++) {
-        os.write(it->c_str(), it->size());
-        os.write("\0", 1);
-      }
-    }
-
-  private:
-    StringTable mStrings;
+ private:
+  StringTable strings_;
 };
 
 class SymTabSection : public Section<SectionType::SYMTAB> {
@@ -250,50 +231,38 @@ class SymTabSection : public Section<SectionType::SYMTAB> {
 };
 
 class RelSection : public Section<SectionType::REL> {
-  public:
-    using Relocation = Elf32_Rel;
-    using RelocationTable = std::vector<Relocation>;
+ public:
+  using Relocation = Elf32_Rel;
+  using RelocationTable = std::vector<Relocation>;
 
-    RelSection()
-      : Section<SectionType::REL>()
-      , mRelocations{}
-    { }
+  RelSection() : Section<SectionType::REL>(), mRelocations{} {}
 
-    RelSection(std::string name, Elf32_Shdr hdr, std::string other)
-      : Section<SectionType::REL>(name, hdr)
-      , mOther{other}
-      , mRelocations{}
-    { }
+  RelSection(std::string name, Elf32_Shdr hdr, std::string other)
+      : Section<SectionType::REL>(name, hdr), mOther{other}, mRelocations{} {}
 
-    virtual size_t size() const override {
-      return sizeof(Relocation) * mRelocations.size();
+  virtual size_t size() const override {
+    return sizeof(Relocation) * mRelocations.size();
+  }
+
+  const std::string& other() { return mOther; }
+
+  RelocationTable& relocations() { return mRelocations; }
+
+  const RelocationTable& relocations() const { return mRelocations; }
+
+  virtual void write(std::ostream& os) const override {
+    // TODO is the first entry supposed to be null?
+    for (auto it = relocations().begin(); it != relocations().end(); it++) {
+      os.write(reinterpret_cast<const char*>(&(*it)), sizeof(*it));
     }
+  }
 
-    const std::string& other() { return mOther; }
-
-    RelocationTable& relocations() {
-      return mRelocations;
-    }
-
-    const RelocationTable& relocations() const {
-      return mRelocations;
-    }
-
-    virtual void write(std::ostream& os) const override {
-      // TODO is the first entry supposed to be null?
-      for (auto it = relocations().begin(); it != relocations().end(); it++) {
-        os.write(reinterpret_cast<const char*>(&(*it)), sizeof(*it));
-      }
-    }
-
-  private:
-    std::string mOther;
-    RelocationTable mRelocations;
+ private:
+  std::string mOther;
+  RelocationTable mRelocations;
 };
 
 using SectionList = std::vector<std::unique_ptr<ISection>>;
-
-
 
 template <typename headerT>
 headerT swap_elf_header(headerT& hdr);
@@ -307,14 +276,12 @@ sheaderT swap_section_header(sheaderT& hdr);
 template <>
 Elf32_Shdr GBAS::swap_section_header(Elf32_Shdr& hdr);
 
-
 /**
  * Models an ELF file, for the purposes of Game Boy programs. This means there
  * is currently no support for e.g. dynamic linking or executable files.
  */
-class ELF
-{
-public:
+class ELF {
+ public:
   ELF();
 
   /**
@@ -377,14 +344,15 @@ public:
 
   const SectionList& sections() { return sections_; }
 
-protected:
+ protected:
   /**
    * Add a section. Only in-place construction supported.
    *
    * @param section: rvalue reference to ISection unique_ptr.
    * @param relocatable: Should a corresponding RelocationSection be created?
    */
-  void add_section(std::unique_ptr<ISection>&& section, bool relocatable = true);
+  void add_section(std::unique_ptr<ISection>&& section,
+                   bool relocatable = true);
 
   /*
      typedef struct {
@@ -420,20 +388,18 @@ protected:
    */
   uint32_t shstrtab_idx_;
 
-public:
-  StrTabSection& shStringTable()
-  {
+ public:
+  StrTabSection& shStringTable() {
     return dynamic_cast<StrTabSection&>(*sections_.at(shstrtab_idx_));
   }
 
-protected:
+ protected:
   /**
    * Index of the current string table in sections_.
    */
   uint32_t strtab_idx_;
 
-  StrTabSection& string_table()
-  {
+  StrTabSection& string_table() {
     return dynamic_cast<StrTabSection&>(*sections_.at(strtab_idx_));
   }
 
@@ -450,8 +416,7 @@ protected:
    */
   uint32_t curr_rel_idx_;
 
-  RelSection& current_relocation_section()
-  {
+  RelSection& current_relocation_section() {
     return dynamic_cast<RelSection&>(*sections_.at(curr_rel_idx_));
   }
 
@@ -460,8 +425,7 @@ protected:
    */
   uint32_t curr_symtab_idx_;
 
-  SymTabSection& current_symbol_table()
-  {
+  SymTabSection& current_symbol_table() {
     return dynamic_cast<SymTabSection&>(*sections_.at(curr_symtab_idx_));
   }
 
@@ -487,4 +451,4 @@ class ELFException : std::exception {
 
 };  // namespace GBAS
 
-#endif // GBAS_ELF_H
+#endif  // GBAS_ELF_H

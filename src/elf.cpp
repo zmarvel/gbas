@@ -141,79 +141,94 @@ ELF::ELF() : curr_section_{0}, curr_rel_idx_{0} {
       false);
 
   // data section
-  add_section(std::make_unique<ProgramSection>(
-      "data",
-      Elf32_Shdr{.sh_name = 0,
-                 .sh_type = SHT_PROGBITS,
-                 .sh_flags = SHF_ALLOC | SHF_WRITE,
-                 .sh_addr = 0,
-                 // TODO we have to fill this in just before writing the file
-                 .sh_offset = 0,
-                 .sh_size = 0,
-                 .sh_link = 0,
-                 .sh_info = 0,
-                 .sh_addralign = 0,
-                 .sh_entsize = 0}));
+  add_section(
+      std::make_unique<ProgramSection>(
+          "data",
+          Elf32_Shdr{
+              .sh_name = 0,
+              .sh_type = SHT_PROGBITS,
+              .sh_flags = SHF_ALLOC | SHF_WRITE,
+              .sh_addr = 0,
+              // TODO we have to fill this in just before writing the file
+              .sh_offset = 0,
+              .sh_size = 0,
+              .sh_link = 0,
+              .sh_info = 0,
+              .sh_addralign = 0,
+              .sh_entsize = 0}),
+      false);
 
   // rodata section
-  add_section(std::make_unique<ProgramSection>(
-      "rodata",
-      Elf32_Shdr{.sh_name = 0,
-                 .sh_type = SHT_PROGBITS,
-                 .sh_flags = SHF_ALLOC,
-                 .sh_addr = 0,
-                 // TODO we have to fill this in just before writing the file
-                 .sh_offset = 0,
-                 .sh_size = 0,
-                 .sh_link = 0,
-                 .sh_info = 0,
-                 .sh_addralign = 0,
-                 .sh_entsize = 0}));
+  add_section(
+      std::make_unique<ProgramSection>(
+          "rodata",
+          Elf32_Shdr{
+              .sh_name = 0,
+              .sh_type = SHT_PROGBITS,
+              .sh_flags = SHF_ALLOC,
+              .sh_addr = 0,
+              // TODO we have to fill this in just before writing the file
+              .sh_offset = 0,
+              .sh_size = 0,
+              .sh_link = 0,
+              .sh_info = 0,
+              .sh_addralign = 0,
+              .sh_entsize = 0}),
+      false);
 
   // bss section
-  add_section(std::make_unique<ProgramSection>(
-      "bss",
-      Elf32_Shdr{.sh_name = 0,
-                 .sh_type = SHT_NOBITS,
-                 .sh_flags = SHF_ALLOC | SHF_WRITE,
-                 .sh_addr = 0,
-                 // TODO we have to fill this in just before writing the file
-                 .sh_offset = 0,
-                 .sh_size = 0,
-                 .sh_link = 0,
-                 .sh_info = 0,
-                 .sh_addralign = 0,
-                 .sh_entsize = 0}));
+  add_section(
+      std::make_unique<ProgramSection>(
+          "bss",
+          Elf32_Shdr{
+              .sh_name = 0,
+              .sh_type = SHT_NOBITS,
+              .sh_flags = SHF_ALLOC | SHF_WRITE,
+              .sh_addr = 0,
+              // TODO we have to fill this in just before writing the file
+              .sh_offset = 0,
+              .sh_size = 0,
+              .sh_link = 0,
+              .sh_info = 0,
+              .sh_addralign = 0,
+              .sh_entsize = 0}),
+      false);
 
   // text section
-  add_section(std::make_unique<ProgramSection>(
-      "text",
-      Elf32_Shdr{.sh_name = 0,
-                 .sh_type = SHT_PROGBITS,
-                 .sh_flags = SHF_ALLOC | SHF_EXECINSTR,
-                 .sh_addr = 0,
-                 // TODO we have to fill this in just before writing the file
-                 .sh_offset = 0,
-                 .sh_size = 0,
-                 .sh_link = 0,
-                 .sh_info = 0,
-                 .sh_addralign = 0,
-                 .sh_entsize = 0}));
+  add_section(
+      std::make_unique<ProgramSection>(
+          "text",
+          Elf32_Shdr{
+              .sh_name = 0,
+              .sh_type = SHT_PROGBITS,
+              .sh_flags = SHF_ALLOC | SHF_EXECINSTR,
+              .sh_addr = 0,
+              // TODO we have to fill this in just before writing the file
+              .sh_offset = 0,
+              .sh_size = 0,
+              .sh_link = 0,
+              .sh_info = 0,
+              .sh_addralign = 0,
+              .sh_entsize = 0}),
+      false);
 
   // init section
-  add_section(std::make_unique<ProgramSection>(
-      "init",
-      Elf32_Shdr{.sh_name = 0,
-                 .sh_type = SHT_PROGBITS,
-                 .sh_flags = SHF_ALLOC | SHF_EXECINSTR,
-                 .sh_addr = 0,
-                 // TODO we have to fill this in just before writing the file
-                 .sh_offset = 0,
-                 .sh_size = 0,
-                 .sh_link = 0,
-                 .sh_info = 0,
-                 .sh_addralign = 0,
-                 .sh_entsize = 0}));
+  add_section(
+      std::make_unique<ProgramSection>(
+          "init",
+          Elf32_Shdr{
+              .sh_name = 0,
+              .sh_type = SHT_PROGBITS,
+              .sh_flags = SHF_ALLOC | SHF_EXECINSTR,
+              .sh_addr = 0,
+              // TODO we have to fill this in just before writing the file
+              .sh_offset = 0,
+              .sh_size = 0,
+              .sh_link = 0,
+              .sh_info = 0,
+              .sh_addralign = 0,
+              .sh_entsize = 0}),
+      false);
 
   // symbol table
   curr_symtab_idx_ = sections_.size();
@@ -246,7 +261,7 @@ void ELF::add_section(std::unique_ptr<ISection>&& section, bool relocatable) {
   // The section header table is a special case--since it doesn't exist yet in
   // sections_, we can't get a reference to it with shStringTable(). But there's
   // more than one way to skin a cat! It must be the provided section.
-  auto shstrtab = (name == "shstrtab") ? dynamic_cast<StrTabSection&>(*section)
+  auto &shstrtab = (name == "shstrtab") ? dynamic_cast<StrTabSection&>(*section)
                                        : shStringTable();
   shstrtab.strings().push_back(name);
 
