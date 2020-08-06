@@ -246,7 +246,7 @@ ELF::ELF() : curr_section_{0}, curr_rel_idx_{0} {
               false);
 }
 
-void ELF::add_section(std::unique_ptr<ISection>&& section, bool relocatable) {
+void ELF::add_section(std::unique_ptr<ISection> section, bool relocatable) {
   // Only one section may have a given name
   auto it = std::find_if(sections_.begin(), sections_.end(), [&](auto& sec) {
     return sec->name() == section->name();
@@ -262,10 +262,10 @@ void ELF::add_section(std::unique_ptr<ISection>&& section, bool relocatable) {
   // sections_, we can't get a reference to it with shStringTable(). But there's
   // more than one way to skin a cat! It must be the provided section.
   auto &shstrtab = (name == "shstrtab") ? dynamic_cast<StrTabSection&>(*section)
-                                       : shStringTable();
+                                       : shstring_table();
   shstrtab.strings().push_back(name);
 
-  sections_.emplace_back(std::move(section));
+  sections_.push_back(std::move(section));
   // After moving the object, `*section` is no longer valid.
   if (relocatable) {
     std::ostringstream builder{};
@@ -375,8 +375,8 @@ Elf32_Sym& ELF::add_symbol(const std::string name, uint32_t value,
       Elf32_Sym{.st_name = nameidx,
                 .st_value = value,
                 .st_size = size,
-                .st_info = ELF32_ST_INFO(bind.binding(), type.type()),
-                .st_other = ELF32_ST_VISIBILITY(visibility.visibility()),
+                .st_info = static_cast<uint8_t>(ELF32_ST_INFO(bind.binding(), type.type())),
+                .st_other = static_cast<uint8_t>(ELF32_ST_VISIBILITY(visibility.visibility())),
                 .st_shndx = static_cast<uint8_t>(curr_section_)});
 
   // If the symbol should be relocatable, find the corresponding section of

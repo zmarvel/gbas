@@ -8,29 +8,26 @@ pipeline {
         }
         stage('Build GCC') {
             steps {
-                sh 'make clean'
-                sh 'make CXX=g++'
+                sh 'mkdir build.gcc && cd build.gcc && cmake ..'
+                sh 'cd build.gcc && make -j4 gbas'
             }
         }
         stage('Test GCC') {
             steps {
-                sh 'make CHECK_OPTIONS="--log_format=JUNIT --log_level=all" CHECK_LOG=test_log_gcc.xml check'
-            }
-        }
-        stage('Test GCC + sanitizers') {
-            steps {
-                sh 'CXXFLAGS="-fsanitize=address" LDFLAGS="-lasan" make CHECK_OPTIONS="--log_format=JUNIT --log_level=all" CHECK_LOG=test_log_gcc.xml check'
+                sh 'cd build.gcc && make -j4 gbas_test'
+                sh 'cd build.gcc && ./gbas_test --log_format=JUNIT --log_level=all > test_log_gcc.xml'
             }
         }
         stage('Build Clang') {
             steps {
-                sh 'make clean'
-                sh 'make CXX=clang++'
+                sh 'mkdir build.clang && cd build.clang && CXX=clang++ CC=clang cmake ..'
+                sh 'cd build.clang && make -j4 gbas'
             }
         }
         stage('Test Clang') {
             steps {
-                sh 'make CXX=clang++ CHECK_OPTIONS="--log_format=JUNIT --log_level=all" CHECK_LOG=test_log_clang.xml check'
+                sh 'cd build.clang && make -j4 gbas_test'
+                sh 'cd build.clang && ./gbas_test --log_format=JUNIT --log_level=all > test_log_gcc.xml'
             }
         }
     }

@@ -34,8 +34,8 @@ class TokenizerTestFile {
   explicit TokenizerTestFile(std::string filename, std::string expectedFilename)
       : filename{filename},
         expectedFilename{expectedFilename},
-        stream{std::string{"test/data/"} + filename},
-        expectedStream{std::string{"test/data/"} + expectedFilename} {}
+        stream{std::string{"../test/data/"} + filename},
+        expectedStream{std::string{"../test/data/"} + expectedFilename} {}
 
   ~TokenizerTestFile() {
     stream.close();

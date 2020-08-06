@@ -37,9 +37,9 @@ void Assembler::assemble(std::shared_ptr<AST::Root> ast, ELF& elf) {
       case NodeType::LABEL:
         {
           auto label = std::dynamic_pointer_cast<Label>(node);
-          size_t value;
-          uint8_t info = ELF32_ST_BIND(STB_GLOBAL);
-          uint16_t other;
+          size_t value = 0;
+          // uint8_t info = ELF32_ST_BIND(STB_GLOBAL);
+          // uint16_t other;
           // TODO support bindings other than GLOBAL
           // TODO add checks for info in ELF
           //switch (mCurrSectionType) {

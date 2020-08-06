@@ -46,6 +46,8 @@ class ISection {
 
   ISection(std::string name, Elf32_Shdr hdr) : mName{name}, header_{hdr} {}
 
+  virtual ~ISection() {}
+
   virtual SectionType type() { return SectionType::INVALID; }
 
   std::string& name() { return mName; }
@@ -268,13 +270,13 @@ template <typename headerT>
 headerT swap_elf_header(headerT& hdr);
 
 template <>
-Elf32_Ehdr GBAS::swap_elf_header(Elf32_Ehdr& hdr);
+Elf32_Ehdr swap_elf_header(Elf32_Ehdr& hdr);
 
 template <typename sheaderT>
 sheaderT swap_section_header(sheaderT& hdr);
 
 template <>
-Elf32_Shdr GBAS::swap_section_header(Elf32_Shdr& hdr);
+Elf32_Shdr swap_section_header(Elf32_Shdr& hdr);
 
 /**
  * Models an ELF file, for the purposes of Game Boy programs. This means there
@@ -351,7 +353,7 @@ class ELF {
    * @param section: rvalue reference to ISection unique_ptr.
    * @param relocatable: Should a corresponding RelocationSection be created?
    */
-  void add_section(std::unique_ptr<ISection>&& section,
+  void add_section(std::unique_ptr<ISection> section,
                    bool relocatable = true);
 
   /*
@@ -389,7 +391,7 @@ class ELF {
   uint32_t shstrtab_idx_;
 
  public:
-  StrTabSection& shStringTable() {
+  StrTabSection& shstring_table() {
     return dynamic_cast<StrTabSection&>(*sections_.at(shstrtab_idx_));
   }
 
