@@ -8,7 +8,6 @@ pipeline {
         }
         stage('Build GCC') {
             steps {
-                sh 'rm -r build.gcc'
                 sh 'mkdir build.gcc && cd build.gcc && cmake ..'
                 sh 'cd build.gcc && make -j4 gbas'
             }
@@ -21,7 +20,6 @@ pipeline {
         }
         stage('Build Clang') {
             steps {
-                sh 'rm -r build.clang'
                 sh 'mkdir build.clang && cd build.clang && CXX=clang++ CC=clang cmake ..'
                 sh 'cd build.clang && make -j4 gbas'
             }
