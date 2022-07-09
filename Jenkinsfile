@@ -1,11 +1,6 @@
 pipeline {
     agent { dockerfile true }
     stages {
-        stage('Git checkout') {
-            steps{
-                checkout scm
-            }
-        }
         stage('Build GCC') {
             steps {
                 sh 'mkdir build.gcc && cd build.gcc && cmake ..'
