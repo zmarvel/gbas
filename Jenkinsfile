@@ -10,19 +10,25 @@ pipeline {
         stage('Test GCC') {
             steps {
                 sh 'cd build.gcc && make -j4 gbas_test'
-                sh 'cd build.gcc && ./gbas_test --log_format=JUNIT --log_level=all > test_log_gcc.xml'
+                catchError {
+                    sh 'cd build.gcc/test && ./gbas_test --log_format=JUNIT --log_level=all > test_log_gcc.xml'
+                }
             }
         }
         stage('Build Clang') {
             steps {
                 sh 'mkdir build.clang && cd build.clang && CXX=clang++ CC=clang cmake ..'
-                sh 'cd build.clang && make -j4 gbas'
+                catchError {
+                    sh 'cd build.clang/test && make -j4 gbas'
+                }
             }
         }
         stage('Test Clang') {
             steps {
                 sh 'cd build.clang && make -j4 gbas_test'
-                sh 'cd build.clang && ./gbas_test --log_format=JUNIT --log_level=all > test_log_gcc.xml'
+                catchError {
+                    sh 'cd build.clang/test && ./gbas_test --log_format=JUNIT --log_level=all > test_log_gcc.xml'
+                }
             }
         }
     }
